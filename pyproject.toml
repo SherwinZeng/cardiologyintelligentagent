@@ -1,0 +1,27 @@
+[project]
+name = "cardiologyintelligentagent"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "zengxiangruiit@gmail.com"}
+]
+requires-python = ">=3.13,<4.0.0"
+dependencies = [
+    "django (>=6.0.6,<7.0.0)",
+    "djangorestframework (>=3.17.1,<4.0.0)",
+    "langchain (>=1.3.7,<2.0.0)",
+    "python-dotenv (>=1.2.2,<2.0.0)",
+    "langchain-deepseek (>=1.1.0,<2.0.0)",
+    "langchain-community (>=0.4.2,<0.5.0)",
+    "dashscope (>=1.25.21,<2.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[dependency-groups]
+dev = [
+    "black (>=26.5.1,<27.0.0)"
+]

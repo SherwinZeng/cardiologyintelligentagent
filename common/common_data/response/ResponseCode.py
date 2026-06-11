@@ -1,0 +1,6 @@
+class ResponseCode:
+    SUCCESS = 200
+    SERVER_ERROR = 500
+    BAD_REQUEST = 400
+    FORBIDDEN = 403
+    SERVICE_UNAVAILABLE = 503
