@@ -1,39 +1,52 @@
-.env
-.venv/
-venv/
-env/
+# Python
+**/.venv/
+**/venv/
+**/env/
+**/__pycache__/
+**/*.py[cod]
+**/*$py.class
+**/*.so
+**/.Python
+**/build/
+**/dist/
+**/*.egg-info/
+**/.eggs/
+**/db.sqlite3
+**/db.sqlite3-journal
+**/.ruff_cache/
+**/.mypy_cache/
+**/.pytest_cache/
+**/.coverage
+**/htmlcov/
+**/media/
+**/staticfiles/
+**/volumes/
 
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
+# Java / Maven / Gradle
+**/target/
+**/.classpath
+**/.project
+**/.settings/
+**/*.iml
 
-build/
-dist/
-*.egg-info/
-.eggs/
+# Node / Frontend
+**/node_modules/
+**/dist/
+**/.next/
+**/.nuxt/
+**/.output/
+**/.turbo/
 
-db.sqlite3
-db.sqlite3-journal
-*.log
+# Env & secrets
+**/.env
+!.env.example
 
+# IDE & OS
 .idea/
 .vscode/
 *.swp
 *.swo
 *~
-
 .DS_Store
 Thumbs.db
-
-.ruff_cache/
-.mypy_cache/
-.pytest_cache/
-.coverage
-htmlcov/
-
-media/
-staticfiles/
-
-volumes/
+*.log

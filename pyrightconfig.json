@@ -1,0 +1,7 @@
+{
+  "venvPath": "services/ai-agent",
+  "venv": ".venv",
+  "extraPaths": ["services/ai-agent"],
+  "pythonVersion": "3.13",
+  "typeCheckingMode": "basic"
+}

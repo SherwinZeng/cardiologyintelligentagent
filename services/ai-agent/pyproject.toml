@@ -1,7 +1,7 @@
 [project]
-name = "cardiologyintelligentagent"
+name = "cardiology-ai-agent"
 version = "0.1.0"
-description = ""
+description = "Cardiology Intelligent Agent - Django DRF + LangChain AI service"
 authors = [
     {name = "zengxiangruiit@gmail.com"}
 ]
@@ -10,6 +10,7 @@ dependencies = [
     "django (>=6.0.6,<7.0.0)",
     "djangorestframework (>=3.17.1,<4.0.0)",
     "langchain (>=1.3.7,<2.0.0)",
+    "langchain-core (>=1.4.4,<2.0.0)",
     "python-dotenv (>=1.2.2,<2.0.0)",
     "langchain-deepseek (>=1.1.0,<2.0.0)",
     "langchain-community (>=0.4.2,<0.5.0)",
@@ -20,6 +21,9 @@ dependencies = [
     "unstructured[pdf] (>=0.23.1,<0.24.0)",
     "zhipuai (>=2.1.5.20250825,<3.0.0.0)",
 ]
+
+[tool.poetry]
+package-mode = false
 
 
 [build-system]
