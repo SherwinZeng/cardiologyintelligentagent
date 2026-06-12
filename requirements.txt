@@ -46,3 +46,4 @@ django
 djangorestframework
 langchain-classic
 langchain-core
+langchain-unstructured

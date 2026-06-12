@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-sys.path.insert(0, str(BASE_DIR / "apps"))
+sys.path.insert(0, str(BASE_DIR))
 
 load_dotenv(BASE_DIR / ".env")
 
@@ -20,10 +20,18 @@ ALLOWED_HOSTS = [
 
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 QIANWEN_API_KEY = os.getenv("QIANWEN_API_KEY")
+UNSTRUCTURED_API_KEY = os.getenv("UNSTRUCTURED_API_KEY")
 
 DEFAULT_TEMPERATURE = float(os.getenv("DEFAULT_TEMPERATURE", "0.7"))
 DEFAULT_MAX_TOKENS = int(os.getenv("DEFAULT_MAX_TOKENS", "2048"))
 
+ZHIPU_API_KEY = os.getenv("ZHIPU_API_KEY")
+ZHIPU_EMBEDDING_MODEL = os.getenv("ZHIPU_EMBEDDING_MODEL", "embedding-3")
+ZHIPU_EMBEDDING_DIMENSIONS = int(os.getenv("ZHIPU_EMBEDDING_DIMENSIONS", "1024"))
+
+MILVUS_URI = os.getenv("MILVUS_URI", "http://127.0.0.1:19530")
+MILVUS_TOKEN = os.getenv("MILVUS_TOKEN", "")
+MILVUS_COLLECTION = os.getenv("MILVUS_COLLECTION", "cardiology_guides")
 
 LANGCHAIN_TRACING_V2 = os.getenv("LANGCHAIN_TRACING_V2", "false").lower() in {"1", "true", "yes", "on"}
 LANGCHAIN_API_KEY = os.getenv("LANGCHAIN_API_KEY", "")
