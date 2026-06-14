@@ -1,6 +1,4 @@
-import sys
 from datetime import datetime
-from django.conf import settings
 
 BANNER = r"""
    ___  _  _  ____   ____   _  _   ___   _  _   ___   ____   _  _   ___   ____   _  _   ___   ____ 
@@ -17,13 +15,6 @@ def print_banner():
     project_name = "zxr-cardiologyintelligentagent"
     version = "0.1.0"
     print(f":: {project_name} :: (v{version})")
-    print()
-
-    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    print(f"Started ZXRCardiologyAgent in {get_startup_time():.2f} seconds (process running)")
-    print(f"Active profile: {'development' if settings.DEBUG else 'production'}")
-    print(f"Server started at http://127.0.0.1:8000")
-    print()
 
 
 _start_time = None

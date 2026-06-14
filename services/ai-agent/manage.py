@@ -8,8 +8,13 @@ import sys
 def main():
     """Run administrative tasks."""
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "configuration.settings")
-    if len(sys.argv) > 1 and sys.argv[1] == 'runserver':
+    if (
+        len(sys.argv) > 1
+        and sys.argv[1] == "runserver"
+        and os.environ.get("RUN_MAIN") == "true"
+    ):
         from log.banner import print_banner, set_start_time
+
         set_start_time()
         print_banner()
     try:

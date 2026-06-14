@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.sherwinzeng.cardiology</groupId>
+        <artifactId>cardiology-cloud</artifactId>
+        <version>1.0.0</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>cardiology-cloud-common</artifactId>
+    <description>公共模块聚合父工程</description>
+    <modules>
+        <module>cardiology-cloud-common-infra</module>
+        <module>cardiology-cloud-common-utils</module>
+        <module>cardiology-cloud-common-data</module>
+    </modules>
+
+    <packaging>pom</packaging>
+
+</project>

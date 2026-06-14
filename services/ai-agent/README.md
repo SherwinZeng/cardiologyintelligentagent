@@ -1,255 +1,181 @@
-# 🫀 Cardiology Intelligent Agent
+<div align="center">
 
-> **心血管智能问诊 Agent · 铭铭**  
-> 基于 Django + LangChain 的心血管健康 AI 助手后端服务  
-> Monorepo 路径：`services/ai-agent/`
+# 🌸 Cardiology Intelligent Agent
 
-![Python](https://img.shields.io/badge/Python-3.13+-3776AB?style=flat-square&logo=python&logoColor=white)
-![Django](https://img.shields.io/badge/Django-6.0-092E20?style=flat-square&logo=django&logoColor=white)
-![DRF](https://img.shields.io/badge/DRF-3.17-red?style=flat-square)
-![LangChain](https://img.shields.io/badge/LangChain-1.3-1C3C3C?style=flat-square)
-![Poetry](https://img.shields.io/badge/Poetry-依赖管理-60A5FA?style=flat-square)
+**心血管智能问诊 Agent · 铭铭**
 
-[快速开始](#-快速开始) · [架构设计](#-架构设计) · [API 文档](#-api-文档) · [环境变量](#-环境变量) · [项目结构](#-项目结构)
+[![Python](https://img.shields.io/badge/Python-3.13+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Django](https://img.shields.io/badge/Django-6.0-092E20?logo=django&logoColor=white)](https://www.djangoproject.com/)
+[![DRF](https://img.shields.io/badge/DRF-3.17-red)](https://www.django-rest-framework.org/)
+[![LangChain](https://img.shields.io/badge/LangChain-1.3-1C3C3C?logo=langchain&logoColor=white)](https://www.langchain.com/)
+[![LangGraph](https://img.shields.io/badge/LangGraph-1.2-1C3C3C)](https://langchain-ai.github.io/langgraph/)
+[![DeepSeek](https://img.shields.io/badge/DeepSeek-V4_Flash-1C3C3C)](https://www.deepseek.com/)
+[![Poetry](https://img.shields.io/badge/Poetry-依赖管理-60A5FA?logo=poetry&logoColor=white)](https://python-poetry.org/)
+[![Redis](https://img.shields.io/badge/Redis-6+-DC382D?logo=redis&logoColor=white)](https://redis.io/)
 
----
+`services/ai-agent/`
 
-## ✨ 项目简介
+[简介](#简介) · [LangGraph](#langgraph-工作流) · [启动](#快速开始) · [API](#api-文档)
 
-**Cardiology Intelligent Agent** 是一个面向心血管健康场景的 LLM Agent 后端。核心 AI 角色 **「铭铭」** 专注于心脏与心血管相关咨询，支持：
-
-- 症状初步理解与紧急度评估（绿 / 黄 / 红）
-- 通俗病因解释与生活方式建议
-- 非心血管话题拒答与就医引导
-- 结构化 JSON 输出，便于前端直接渲染
-
-> ⚠️ **免责声明**：本项目仅供健康信息参考，不能替代医生诊断与处方。
+</div>
 
 ---
 
-## 🧩 功能概览
+## 简介
 
-| 模块 | 路由 | 模型 | 状态 |
+**ai-agent** 是心血管问诊系统的 Python AI 服务，核心角色是 **铭铭** —— 基于 LangGraph 的心血管健康咨询 Agent。
+
+**主要能力：**
+
+- 症状采集与分诊（`green` / `yellow` / `red`）
+- 既往史与危险因素询问
+- 检查 / 化验报告解读
+- 寒暄、自我介绍
+- 非心血管话题拒答
+- 多轮对话（`session` → `thread_id`）
+- 结构化 JSON 输出
+
+> ⚠️ 仅供健康信息参考，不能替代医生诊断与处方。
+
+---
+
+## 功能状态
+
+| 接口 | 路由 | 模型 | 状态 |
 |------|------|------|------|
-| 普通医疗对话 | `POST /api/cardiology/general-understanding/` | DeepSeek V4 Flash | ✅ 可用 |
-| 深度医疗推理 | `POST /api/cardiology/reasoning/` | DeepSeek V4 Pro | 🚧 开发中 |
-| 多模态解读 | `POST /api/cardiology/multimodal/` | 通义千问 3.7 Plus | 🚧 开发中 |
+| 普通问诊 | `POST /general-understanding/` | LangGraph + DeepSeek Flash | ✅ |
+| 深度推理 | `POST /reasoning/` | DeepSeek Pro | 📋 |
+| 多模态 | `POST /multimodal/` | 通义千问 3.7 | 📋 |
 
 ---
 
-## 🏗 架构设计
+## 技术栈
 
-### 整体分层
-
-```
-                         ┌─────────────────────────┐
-                         │   客户端 Web / Apifox    │
-                         └────────────┬────────────┘
-                                      │ POST JSON
-                                      ▼
-┌─────────────────────────────────────────────────────────────┐
-│  configuration/urls.py  ──▶  cardiology_chat/urls.py       │
-└──────────────────────────────┬──────────────────────────────┘
-                               ▼
-                    ┌──────────────────────┐
-                    │  View (BaseCachedLLM) │
-                    └──────────┬───────────┘
-                               │ self.general_model
-                               ▼
-              ┌────────────────────────────────────┐
-              │   general_understanding_service    │
-              │  ┌─────────────┐  ┌─────────────┐  │
-              │  │ Serializer  │  │ Prompt 铭铭 │  │
-              │  └─────────────┘  └─────────────┘  │
-              └────────────────┬───────────────────┘
-                               │ invoke
-                               ▼
-              ┌────────────────────────────────────┐
-              │   DeepSeek V4 Flash (类级缓存)      │
-              │   BaseCachedLLM ──▶ LLMFactory     │
-              └────────────────────────────────────┘
-```
-
-### 请求处理流程
-
-```
-客户端                View                 Service              大模型
-  │                    │                     │                    │
-  │── POST message ───▶│                     │                    │
-  │                    │── general_model ───▶│                    │
-  │                    │   (首次经 Factory   │                    │
-  │                    │    创建并缓存)      │                    │
-  │                    │                     │── 参数校验 ────────│
-  │                    │                     │   (失败则 400)   │
-  │                    │                     │── 拼 Prompt ─────│
-  │                    │                     │── invoke ───────▶│
-  │                    │                     │◀── JSON 文本 ────│
-  │                    │                     │── JsonParser     │
-  │                    │◀── dict 结构化数据 ──│                    │
-  │◀── JsonResponse ───│                     │                    │
-  │    200             │                     │                    │
-```
-
-### 多模型路由策略
-
-```
-CardiologyGeneralUnderstandingView
-        │
-        ▼
-  general_model ──▶ LLMFactory ──▶ deepseek-v4-flash  (temperature 0.7)
-
-CardiologyReasoningView
-        │
-        ▼
-  reasoning_model ──▶ LLMFactory ──▶ deepseek-v4-pro  (temperature 0.7)
-
-CardiologyMultimodalView
-        │
-        ▼
-  multimodal_model ──▶ LLMFactory ──▶ qwen3.7-plus  (temperature 0.5)
-```
+| 类别 | 技术 |
+|------|------|
+| Web | Django 6.0 · DRF |
+| Agent | LangGraph · LangChain |
+| LLM | DeepSeek V4 Flash |
+| Checkpoint | InMemorySaver（开发环境） |
+| 鉴权 | Redis 内部 token |
+| 包管理 | Poetry |
 
 ---
 
-## 📁 项目结构
+## LangGraph 工作流
 
+```mermaid
+flowchart TD
+    START --> dispatch[clinical_dispatch_node]
+    dispatch -->|symptom| symptom[symptom_collection_node]
+    dispatch -->|history| history[medical_history_inquiry_node]
+    dispatch -->|lab| lab[lab_report_interpret_node]
+    dispatch -->|greeting| greeting[greeting_response_node]
+    dispatch -->|fallback| fallback[medical_fallback_response_node]
+    lab --> risk[cardiac_risk_stratification_node]
+    risk --> referral[physician_referral_node]
+    symptom --> END
+    history --> END
+    greeting --> END
+    referral --> END
+    fallback --> END
 ```
+
+### 分流规则
+
+| 输入示例 | 路由 | 说明 |
+|----------|------|------|
+| 我胸口疼 | `symptom` | 症状采集 |
+| 我有高血压 | `history` | 既往史 |
+| 帮我看心电图 | `lab` | 报告解读 |
+| 你好 / 你是谁 | `greeting` | 寒暄 |
+| 无关话题 | `fallback` | 拒答 |
+
+---
+
+## 项目结构
+
+```text
 services/ai-agent/
-├── configuration/                 # Django 项目配置
-│   ├── settings.py                # 环境变量、DRF、中间件
-│   ├── urls.py                    # 大路由入口
-│   └── handler/
-│       └── exception_handler.py   # 全局异常格式化
-│
-├── cardiology_chat/               # 心内科 Agent 应用
-│   ├── views.py                   # API 视图
-│   ├── urls.py                    # 小路由
+├── configuration/              # Django 配置
+├── cardiology_chat/
+│   ├── views.py
+│   ├── urls.py
 │   ├── serializers/
-│   │   └── chat_serializer.py     # 请求体验证
-│   ├── services/
-│   │   └── general_understanding_service.py
-│   ├── prompt/
-│   │   └── general_prompt.py      # 铭铭 System Prompt
-│   └── factory/
-│       ├── LLMFactory.py          # 大模型工厂
-│       └── AgentFactory.py        # Agent 工厂
-│
-├── guide/                         # 心血管指南 PDF 知识库
-├── guide_loader.py                # 指南 PDF 加载（根目录，方便直接调用）
-│
-├── common/common_data/            # 公共数据模块
-│   ├── exception/chat_exception.py
-│   └── response/
-│       ├── ResponseCode.py
-│       └── ResponseMessage.py
-│
-├── log/                           # 日志与启动 Banner
-├── .env.example                   # 环境变量模板
-├── pyproject.toml                 # Poetry 依赖
+│   ├── services/chat_graph_service.py
+│   ├── graph/
+│   │   ├── director.py
+│   │   ├── state.py
+│   │   └── nodes/
+│   ├── middlewares/internal_token.py
+│   └── prompts/
+├── common/common_data/
+├── .env.example
 └── manage.py
 ```
 
 ---
 
-## 🛠 技术栈
+## 快速开始
 
-| 类别 | 技术 |
-|------|------|
-| Web 框架 | Django 6.0 |
-| API | Django REST Framework |
-| Agent | LangChain + LangGraph |
-| 大模型 | DeepSeek V4（Flash / Pro）、通义千问 3.7 Plus |
-| 配置 | python-dotenv |
-| 依赖管理 | Poetry |
-| 可观测 | LangSmith（可选） |
+### 环境
 
----
-
-## 🚀 快速开始
-
-### 环境要求
-
-- Python **3.13+**
+- Python 3.13+
 - Poetry
-- DeepSeek API Key（必填）
-- 通义千问 API Key（多模态功能需要）
+- DeepSeek API Key
+- Redis
 
-### 1. 克隆并安装依赖
+### 安装
 
 ```bash
-git clone <your-repo-url>
-cd CardiologyIntelligentAgent
-
-# 推荐：在仓库根目录
-make install-ai
-
-# 或进入本目录
 cd services/ai-agent
+cp .env.example .env
 poetry install --no-root
 ```
 
-> 无 Poetry 时：`pip install -r requirements.txt`（需 Python 3.13）
-
-### 2. 配置环境变量
-
-```bash
-cp .env.example .env
-```
-
-编辑 `.env`，至少填入：
+### 配置 `.env`
 
 ```env
 DJANGO_SECRET_KEY=your-secret-key
 DEEPSEEK_API_KEY=sk-xxxxxxxx
+REDIS_HOST=127.0.0.1
+REDIS_PORT=6379
+REDIS_DB=0
 ```
 
-### 3. 启动服务
+### 启动
 
 ```bash
-poetry run python manage.py runserver
+poetry run python manage.py runserver 0.0.0.0:8000
 ```
 
-启动成功后将看到 ASCII Banner：
-
-```
-:: zxr-cardiologyintelligentagent :: (v0.1.0)
-Server started at http://127.0.0.1:8000
-```
-
-### 4. 测试接口
-
-```bash
-curl -X POST http://127.0.0.1:8000/api/cardiology/general-understanding/ \
-  -H "Content-Type: application/json" \
-  -d '{"message": "我最近偶尔心悸，需要注意什么？"}'
-```
+访问：`http://127.0.0.1:8000/api/cardiology/`
 
 ---
 
-## 📡 API 文档
+## API 文档
 
-### 普通医疗对话
+### POST `/api/cardiology/general-understanding/`
 
-```
-POST /api/cardiology/general-understanding/
-Content-Type: application/json
-```
+> 仅供 Java Feign 调用，需 `X-Internal-Token` 请求头。
 
-**请求体**
+**请求体：**
 
 ```json
 {
-  "message": "我最近偶尔心悸，需要注意什么？",
-  "token": ""
+  "uid": "user-001",
+  "session": "session-001",
+  "message": "我胸口疼"
 }
 ```
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `message` | string | ✅ | 用户问诊内容 |
-| `token` | string | ❌ | 预留字段 |
+| 字段 | 必填 | 说明 |
+|------|------|------|
+| `uid` | 是 | 用户 ID，仅做校验 |
+| `session` | 是 | 会话 ID → LangGraph `thread_id` |
+| `message` | 是 | 用户输入 |
 
-**成功响应 `200`**
+**响应：**
 
 ```json
 {
@@ -257,103 +183,87 @@ Content-Type: application/json
   "message": "success",
   "data": {
     "urgency": "yellow",
-    "explanation": "心悸可能由多种原因引起……",
-    "advice": "建议保持规律作息，减少咖啡因摄入……",
-    "disclaimer": "温馨提示：铭铭仅为健康信息助手，不能替代医生诊断……"
+    "explanation": "...",
+    "advice": "...",
+    "disclaimer": "..."
   }
 }
 ```
 
-**参数错误 `400`**
+### 输出字段
 
-```json
-{
-  "code": 400,
-  "message": "{'message': [ErrorDetail(string='This field is required.', code='required')]}",
-  "data": null
-}
-```
-
-### 铭铭输出字段说明
-
-| 字段 | 说明 | 示例值 |
-|------|------|--------|
-| `urgency` | 紧急度评估 | `green` / `yellow` / `red` |
-| `explanation` | 病因通俗解释（50～200 字） | 心悸可能由…… |
-| `advice` | 行动建议与就诊指引 | 建议减少咖啡因…… |
-| `disclaimer` | 医疗免责声明 | 铭铭仅为健康信息助手…… |
+| 字段 | 内部字段 | 取值 |
+|------|----------|------|
+| `urgency` | `triage_level` | `""` / `green` / `yellow` / `red` |
+| `explanation` | `clinical_impression` | 主回复 |
+| `advice` | `management_advice` | 建议 |
+| `disclaimer` | `medical_disclaimer` | 免责声明 |
 
 ---
 
-## 🔐 环境变量
+## 多轮对话
+
+```python
+thread_id = session.strip()
+cardiology_graph.invoke(
+    {"messages": [HumanMessage(content=message)]},
+    config={"configurable": {"thread_id": thread_id}},
+)
+```
+
+- `uid`：身份校验，不参与记忆
+- `session`：多轮记忆键
+- `message`：仅传当前轮输入
+
+聊天记录由 Java `chat_message` 表持久化，本服务不访问 MySQL。
+
+---
+
+## 内部鉴权
+
+```text
+Java → Redis SET internal:token:{uuid} = ok (TTL 60s)
+     → Feign Header: X-Internal-Token
+Python → 校验后删除
+```
+
+---
+
+## 环境变量
 
 | 变量 | 必填 | 说明 |
 |------|------|------|
-| `DJANGO_SECRET_KEY` | ✅ | Django 密钥 |
-| `DJANGO_DEBUG` | ❌ | 调试模式，默认 `False` |
-| `DJANGO_ALLOWED_HOSTS` | ❌ | 允许域名，逗号分隔 |
-| `DEEPSEEK_API_KEY` | ✅ | DeepSeek API Key |
-| `QIANWEN_API_KEY` | ❌ | 通义千问 Key（多模态） |
-| `DEFAULT_TEMPERATURE` | ❌ | 默认温度，默认 `0.7` |
-| `DEFAULT_MAX_TOKENS` | ❌ | 默认最大 Token，默认 `2048` |
-| `LANGCHAIN_TRACING_V2` | ❌ | 是否开启 LangSmith |
-| `LANGCHAIN_API_KEY` | ❌ | LangSmith API Key |
-| `LANGCHAIN_PROJECT` | ❌ | LangSmith 项目名 |
+| `DJANGO_SECRET_KEY` | 是 | Django 密钥 |
+| `DEEPSEEK_API_KEY` | 是 | DeepSeek Key |
+| `REDIS_HOST` | 是 | Redis 地址 |
+| `REDIS_PORT` | 否 | 默认 6379 |
+| `QIANWEN_API_KEY` | 否 | 多模态（规划） |
+| `LANGCHAIN_TRACING_V2` | 否 | LangSmith |
 
 ---
 
-## 🧠 核心设计说明
+## 路线图
 
-### 路由分层
-
-```
-configuration/urls.py          → 大路由（/api/cardiology/）
-cardiology_chat/urls.py        → 小路由（绑定 View）
-views.py                       → 接口入口
-services/                      → 业务编排
-```
-
-### 模型与 Prompt 分工
-
-| 层级 | 职责 |
+| 功能 | 状态 |
 |------|------|
-| `LLMFactory` | 创建裸模型（API Key、温度、max_tokens） |
-| `BaseCachedLLM` | 按场景缓存模型实例 |
-| `general_prompt.py` | 维护铭铭角色与 JSON 输出规范 |
-| `service` | 校验 → 拼消息 → 调用 → 解析 JSON |
-
-### 异常处理
-
-所有业务异常继承 `ChatBusinessException`，由 `custom_exception_handler` 统一包装为：
-
-```json
-{ "code": 400, "message": "...", "data": null }
-```
+| LangGraph 分流节点 | ✅ |
+| 多轮 session | ✅ |
+| 内部 token 鉴权 | ✅ |
+| 寒暄 / 作者彩蛋 | ✅ |
+| Redis Checkpoint | 📋 |
+| reasoning / multimodal | 📋 |
+| SSE 流式 | 📋 |
 
 ---
 
-## 🗺 路线图
+## 作者
 
-| 阶段 | 内容 | 状态 |
-|------|------|------|
-| 已完成 | Django + DRF 项目骨架 | ✅ |
-| 已完成 | 铭铭 Prompt 心血管专科设定 | ✅ |
-| 已完成 | 普通对话接口 + JSON 输出 | ✅ |
-| 已完成 | 统一异常与响应码 | ✅ |
-| 进行中 | 深度推理接口（DeepSeek Pro） | 🚧 |
-| 进行中 | 多模态接口（Qwen 3.7 Plus） | 🚧 |
-| 规划中 | SSE 流式输出（BaseStreamAPIView） | 📋 |
-| 规划中 | 对话历史与多轮会话 | 📋 |
-| 规划中 | RAG 知识库接入 | 📋 |
+**zengxiangrui**（曾祥瑞） · zengxiangruiit@gmail.com
 
 ---
 
-## 👤 作者
+<div align="center">
 
-**zengxiangrui** · zengxiangruiit@gmail.com
+[← 项目根目录](../../README.md) · [Java 中间层 →](../cardiology-cloud/README.md)
 
----
-
-<p align="center">🌸 <em>花开堪折直须折，莫待无花空折枝</em> 🌸</p>
-
-<p align="center"><strong>如果这个项目对你有帮助，欢迎 Star ⭐</strong></p>
+</div>
