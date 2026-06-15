@@ -1,0 +1,23 @@
+.app-layout {
+  min-height: 100vh;
+  background: var(--bg-page);
+}
+
+.app-layout__body {
+  display: flex;
+  min-height: calc(100vh - var(--header-height));
+}
+
+.app-layout__content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: calc(100vh - var(--header-height));
+}
+
+.app-layout__main {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+}

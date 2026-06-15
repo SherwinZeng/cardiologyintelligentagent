@@ -1,0 +1,37 @@
+.login-page {
+  display: flex;
+  min-height: 100vh;
+  background: var(--login-panel-bg);
+}
+@media (max-width: 960px) {
+  .login-page {
+    flex-direction: column;
+  }
+
+  .login-page__hero {
+    min-height: auto;
+    padding: 22px 18px 18px;
+  }
+
+  .login-page__hero-stage {
+    min-height: 188px;
+    max-height: 300px;
+    margin-top: 10px;
+  }
+
+  .login-page__hero-character-wrap {
+    width: min(100%, 280px);
+  }
+
+  .login-page__hero-character {
+    max-height: 280px;
+  }
+
+  .login-page__hero-features {
+    margin-top: 8px;
+  }
+
+  .login-page__card {
+    padding-top: 8px;
+  }
+}

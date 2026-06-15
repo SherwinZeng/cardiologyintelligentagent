@@ -1,0 +1,113 @@
+{
+  "app": {
+    "name": "Cardiology Intelligent Consultation Platform",
+    "tagline": "Your Cardiovascular Health AI Assistant"
+  },
+  "nav": {
+    "home": "Home",
+    "records": "Consultation Records",
+    "reports": "Health Reports",
+    "healthData": "Health Data",
+    "healthKnowledge": "Health Knowledge",
+    "followUp": "Follow-up Reminders",
+    "settings": "System Settings",
+    "privacy": "Privacy",
+    "help": "Help"
+  },
+  "sidebar": {
+    "promo": "Professional care for your cardiovascular health"
+  },
+  "locale": {
+    "label": "Language",
+    "zh-CN": "简体中文",
+    "en-US": "English"
+  },
+  "theme": {
+    "label": "Theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
+  "footer": {
+    "copyright": "© {year} {owner}"
+  },
+  "welcome": {
+    "hi": "Hi, I'm Mingming",
+    "desc": "Your cardiovascular health AI assistant. I can help you understand symptoms and assess urgency.",
+    "tipLabel": "Tip",
+    "tips": [
+      "Regular sleep habits are important for your heart.",
+      "A daily 30-minute walk supports cardiovascular health.",
+      "Less salt and oil helps keep blood pressure steady.",
+      "Stay calm — big mood swings stress the heart.",
+      "Don't ignore chest tightness; ask early if worried.",
+      "Quitting smoking is one of the best gifts for your heart."
+    ],
+    "input": "Please describe your symptoms or health concerns...",
+    "start": "Start Consultation",
+    "chip1": "What should I do about chest tightness?",
+    "chip2": "What to know about high blood pressure?",
+    "chip3": "How to read my ECG results?",
+    "footer": "This platform provides AI-assisted consultation suggestions and cannot replace a doctor's diagnosis. Seek medical care if symptoms are severe or persistent."
+  },
+  "chat": {
+    "recent": "Recent Sessions",
+    "new": "New Consultation",
+    "with": "Chatting with Mingming",
+    "current": "Current: {topic}",
+    "input": "Describe your symptoms, Mingming is here to help...",
+    "send": "Send"
+  },
+  "ai": {
+    "assistant": "Mingming · Cardiology AI Assistant",
+    "analysis": "Symptom Analysis",
+    "advice": "Care Recommendation",
+    "notes": "Important Notes",
+    "disclaimer": "This response is for health information only and is not a substitute for professional medical diagnosis or prescription. Seek medical care if needed."
+  },
+  "urgency": {
+    "low": "Low Urgency",
+    "moderate": "Moderate Urgency",
+    "high": "High Urgency",
+    "all": "All Levels"
+  },
+  "records": {
+    "title": "Consultation Records",
+    "search": "Search sessions...",
+    "continue": "Continue Chat",
+    "detail": "View Details",
+    "messages": "{n} messages"
+  },
+  "appt": {
+    "title": "Book Cardiology Appointment",
+    "submit": "Submit Appointment",
+    "status": "Appointment Status",
+    "processing": "Your appointment is being processed...",
+    "async": "Submitted requests are processed asynchronously. You will be notified of the result."
+  },
+  "login": {
+    "title": "Welcome back~",
+    "subtitle": "Sign in to chat with Mingming",
+    "phone": "Phone number",
+    "code": "SMS verification code",
+    "sendCode": "Send code",
+    "resendCode": "Resend in {seconds}s",
+    "remember": "Remember me",
+    "submit": "Sign In",
+    "or": "Or",
+    "github": "Continue with GitHub",
+    "qq": "Continue with QQ",
+    "guest": "Continue as Guest",
+    "noAccount": "Don't have an account yet?",
+    "registerNow": "Join us ✨",
+    "disclaimer": "For health information only. Not a substitute for medical diagnosis."
+  },
+  "feat": {
+    "consult": "Smart Consultation",
+    "urgency": "Urgency Assessment",
+    "care": "Care Navigation"
+  },
+  "user": {
+    "guest": "Mr. Zhang"
+  }
+}
