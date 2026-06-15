@@ -16,15 +16,23 @@ export const useMultiLogin = (): IUseMultiLoginReturn => {
     const {run} = useAsyncAction()
 
     async function sendSmsCode() {
+        // 暂未实现
+        return Promise.resolve();
     }
 
     async function handleSmsLogin() {
+        // 暂未实现
+        return Promise.resolve();
     }
 
     async function handleGithubLogin() {
+        // 暂未实现
+        return Promise.resolve();
     }
 
     async function handleQqLogin() {
+        // 暂未实现
+        return Promise.resolve();
     }
 
     async function handleGuestLogin() {
@@ -39,9 +47,8 @@ export const useMultiLogin = (): IUseMultiLoginReturn => {
             })
             navigateRouter.push("/");
             ElMessage.success("登录成功,访客有效期仅有1个小时和限30次提问哦")
-        }, (error) => {
+        }, () => {
             ElMessage.error("登录失败，请联系管理员解决")
-            console.log(error)
         })
     }
 
