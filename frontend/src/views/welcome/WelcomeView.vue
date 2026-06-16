@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
 import mingmingWelcomeUrl from '@/assets/character/mingming-welcome-q.png'
+import MingmingLoadingTipContent from '@/components/common/MingmingLoadingTipContent.vue'
 import CuteHeartIcon from '@/components/icons/CuteHeartIcon.vue'
 import PrivacyShieldIcon from '@/components/icons/PrivacyShieldIcon.vue'
 
@@ -260,9 +261,16 @@ const decorItems: DecorItem[] = [
               :placeholder="t('welcome.input')"
               @keydown.enter.prevent="startConsultation"
             />
-            <button type="button" class="welcome-page__upload" aria-label="upload">
-              <el-icon><Picture /></el-icon>
-            </button>
+            <el-tooltip placement="top" effect="light" popper-class="mingming-loading-tip">
+              <template #content>
+                <MingmingLoadingTipContent :text="t('chat.multimodalTip')" />
+              </template>
+              <span class="welcome-page__upload-wrap">
+                <button type="button" class="welcome-page__upload" aria-label="upload" disabled>
+                  <el-icon><Picture /></el-icon>
+                </button>
+              </span>
+            </el-tooltip>
           </div>
           <el-button
             type="primary"

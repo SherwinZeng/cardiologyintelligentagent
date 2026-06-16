@@ -13,6 +13,11 @@
   margin: 0 auto;
 }
 
+.chat-composer__upload-wrap {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
 .chat-composer__upload {
   display: inline-flex;
   flex-shrink: 0;

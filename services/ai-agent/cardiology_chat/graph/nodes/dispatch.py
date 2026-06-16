@@ -6,6 +6,7 @@ from cardiology_chat.prompts.dispatch import (
     LAB_KEYWORDS,
     GREETING_KEYWORDS,
     META_KEYWORDS,
+    CARDIO_SCOPE_KEYWORDS,
 )
 
 
@@ -47,5 +48,9 @@ def clinical_dispatch_node(state: CardiologyState) -> dict:
     # 寒暄 / 自我介绍 / 元问答
     if _is_greeting_or_meta(text):
         return {"route": "greeting"}
+
+    # 心血管相关表述兜底，避免误拒答（如「心脏跳的有点快」）
+    if any(k in text for k in CARDIO_SCOPE_KEYWORDS):
+        return {"route": "symptom"}
 
     return {"route": "fallback"}

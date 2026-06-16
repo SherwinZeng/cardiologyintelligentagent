@@ -486,10 +486,18 @@ html.dark .welcome-page__decor-item.is-motion-glow {
   }
 }
 
-.welcome-page__upload {
+.welcome-page__upload-wrap {
   position: absolute;
   top: 50%;
   right: 16px;
+  display: inline-flex;
+  transform: translateY(-50%);
+}
+
+.welcome-page__upload {
+  position: static;
+  top: auto;
+  right: auto;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -497,11 +505,12 @@ html.dark .welcome-page__decor-item.is-motion-glow {
   color: var(--text-secondary);
   background: none;
   border: none;
-  transform: translateY(-50%);
-  cursor: pointer;
+  transform: none;
+  cursor: not-allowed;
+  opacity: 0.6;
 
   &:hover {
-    color: var(--color-primary-light);
+    color: var(--text-secondary);
   }
 }
 

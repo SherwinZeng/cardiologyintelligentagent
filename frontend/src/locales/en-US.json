@@ -17,7 +17,9 @@
     "help": "Help"
   },
   "sidebar": {
-    "promo": "Professional care for your cardiovascular health"
+    "promo": "Professional care for your cardiovascular health",
+    "underConstruction": "Under construction — coming soon",
+    "loadingTip": "Mingming is studying hard — stay tuned!"
   },
   "locale": {
     "label": "Language",
@@ -58,9 +60,35 @@
     "with": "Chatting with Mingming",
     "current": "Current: {topic}",
     "input": "Describe your symptoms, Mingming is here to help...",
-    "send": "Send"
+    "send": "Send",
+    "typing": "Mingming is typing…",
+    "createSuccess": "Consultation session created",
+    "createFailed": "Failed to create session",
+    "sendFailed": "Failed to send. Please try again.",
+    "loadFailed": "Failed to load messages",
+    "loadSessionsFailed": "Failed to load sessions",
+    "loadMore": "Load more",
+    "loadingMore": "Loading…",
+    "loadingMessages": "Mingming is loading messages…",
+    "loadingOlderMessages": "Mingming is loading earlier messages…",
+    "multimodalTip": "Mingming is learning multimodal — stay tuned!",
+    "emptyInvite": "Come chat with {name}",
+    "searchEmpty": "No matching sessions",
+    "pinSession": "Pin",
+    "unpinSession": "Unpin",
+    "pinSessionSuccess": "Session pinned",
+    "unpinSessionSuccess": "Session unpinned",
+    "pinSessionFailed": "Failed to pin session",
+    "deleteSession": "Delete",
+    "deleteSessionTitle": "Delete session",
+    "deleteSessionConfirm": "This cannot be undone. All messages in this session will be removed. Continue?",
+    "deleteConfirm": "Delete",
+    "cancel": "Cancel",
+    "deleteSessionSuccess": "Session deleted",
+    "deleteSessionFailed": "Failed to delete session"
   },
   "ai": {
+    "name": "Mingming",
     "assistant": "Mingming · Cardiology AI Assistant",
     "analysis": "Symptom Analysis",
     "advice": "Care Recommendation",
@@ -98,9 +126,22 @@
     "subtitle": "Sign in to chat with Mingming",
     "phone": "Phone number",
     "code": "SMS verification code",
+    "captcha": "Captcha",
+    "captchaFetch": "Get captcha",
+    "captchaLoading": "Loading",
+    "captchaRefresh": "Click to refresh captcha",
+    "captchaRequired": "Please complete the captcha first",
+    "captchaFailed": "Failed to load captcha",
+    "captchaModalTitle": "Security Verification",
+    "captchaModalTip": "Enter the captcha below. SMS code will be sent after verification.",
+    "captchaConfirm": "Verify and Send",
+    "captchaCancel": "Cancel",
+    "phoneRequired": "Please enter your phone number first",
+    "codeRequired": "Please enter the SMS verification code",
+    "sendCodeTipWait": "Code sent. You can resend in {seconds}s",
+    "submitTipBoth": "Please enter your phone number and verification code",
     "sendCode": "Send code",
     "resendCode": "Resend in {seconds}s",
-    "remember": "Remember me",
     "submit": "Sign In",
     "or": "Or",
     "github": "Continue with GitHub",
@@ -115,10 +156,145 @@
     "urgency": "Urgency Assessment",
     "care": "Care Navigation"
   },
+  "auth": {
+    "loginRequired": "Sign in to use this feature",
+    "loginPromptTitle": "Sign in to continue",
+    "loginPromptMessage": "Sign in to save your consultation history, or try guest mode for a quick start.",
+    "goLogin": "Sign in",
+    "guestTrial": "Guest trial",
+    "guestTrialTip": "Guest access lasts 1 hour, up to 30 questions"
+  },
   "user": {
     "guest": "Mr. Zhang",
     "notLoggedIn": "Not signed in",
     "logout": "Sign out",
     "goLogin": "Sign in"
+  },
+  "helpPage": {
+    "title": "Help",
+    "subtitle": "Welcome to the Cardiology Intelligent Consultation Platform. Here is a quick guide from Mingming to help you get started.",
+    "startChat": "Start consultation",
+    "notice": "Important: Information on this platform is for health reference only and does not replace professional medical diagnosis or prescriptions. For emergencies such as chest pain, breathing difficulty, or loss of consciousness, call emergency services immediately.",
+    "sections": [
+      {
+        "title": "1. Sign in",
+        "items": [
+          "Click the avatar area in the top-right to sign in with your phone number and SMS code.",
+          "First-time users are registered automatically. Without a nickname, your display name defaults to “User” plus the last 4 digits of your phone.",
+          "Guest mode is available for a quick trial, with usage limits."
+        ]
+      },
+      {
+        "title": "2. Start a consultation",
+        "items": [
+          "On the home page, describe your symptoms and tap “Start consultation”.",
+          "You can also click “New consultation” in the sidebar to create a blank session.",
+          "Be as specific as possible: symptoms, duration, triggers, and medical history."
+        ]
+      },
+      {
+        "title": "3. Chat with Mingming",
+        "items": [
+          "Type your symptoms in the input box at the bottom and send.",
+          "Mingming’s replies include urgency labels (green / yellow / red) for reference.",
+          "Image upload is coming soon."
+        ]
+      },
+      {
+        "title": "4. Manage sessions",
+        "items": [
+          "The sidebar lists past sessions, 5 per page with pagination at the bottom.",
+          "Use the search box to filter by title or preview text.",
+          "Swipe a session left to pin or delete. Deletion requires confirmation.",
+          "Pinned sessions appear at the top of the list."
+        ]
+      },
+      {
+        "title": "5. Message history",
+        "items": [
+          "Opening a session shows the latest messages and scrolls to the bottom.",
+          "Scroll to the top to load earlier messages, 40 at a time.",
+          "Switching sessions reloads that session’s history."
+        ]
+      }
+    ]
+  },
+  "privacyPage": {
+    "title": "Privacy",
+    "subtitle": "The Cardiology Intelligent Consultation Platform takes the security of your personal and health-related information seriously. This notice explains how we collect, use, and protect your data.",
+    "lastUpdated": "Last updated: June 2026",
+    "notice": "Internal test notice: The current build is for internal testing. Some features (smart appointment booking, medical records, health reports) are not yet available. Before enabling features that require your ID number, we will prompt you again and ask for your explicit consent.",
+    "sections": [
+      {
+        "title": "1. Scope",
+        "items": [
+          "This notice applies when you use sign-in, AI consultation, session management, and related services on this platform.",
+          "If you later use smart appointment booking, medical records, or health reports, this notice and any feature-specific rules also apply.",
+          "In guest mode, we collect only the minimum information needed for a limited trial experience."
+        ]
+      },
+      {
+        "title": "2. Information we collect",
+        "items": [
+          "Account data: phone number, SMS verification records, optional nickname, and login session identifiers.",
+          "Consultation data: symptom descriptions, chat messages with Mingming, session titles and previews, and message timestamps.",
+          "Device and logs: basic technical data such as access time, browser type, and API request logs to keep the service secure and stable.",
+          "Future feature data: when you use smart appointment booking, medical records, or health reports, we may collect name, national ID number, care provider, and test reports as required by each feature. Details will be shown on the consent screen when the feature launches."
+        ]
+      },
+      {
+        "title": "3. ID number and other sensitive personal information",
+        "items": [
+          "Your national ID number is legally classified as sensitive personal information. The current v0.1 internal test does not require it.",
+          "Upcoming smart appointment booking needs identity verification and hospital integration; medical records need to link visits and tests to you; health reports must be tied to the correct personal record—all may require your real name and ID number.",
+          "We collect ID numbers only when necessary for those features and do not use them for unrelated marketing or sharing.",
+          "Sensitive data such as ID numbers is stored with encryption and access controls; displayed values are masked when possible.",
+          "We do not provide your ID number to unrelated third parties unless required by law or with your separate consent."
+        ]
+      },
+      {
+        "title": "4. How we use information",
+        "items": [
+          "To provide core services: sign-in, AI consultation, session storage, and history lookup.",
+          "To improve reply quality and product experience (during internal testing, data may be used in de-identified or aggregated form for troubleshooting and optimization).",
+          "After related features launch, to verify identity, link records, generate reports, and show them to you.",
+          "To comply with legal obligations and address security risks, fraud, or abuse."
+        ]
+      },
+      {
+        "title": "5. Storage and security",
+        "items": [
+          "Your data is stored on servers located in the People’s Republic of China with appropriate safeguards.",
+          "We use encryption in transit, access control, and least-privilege practices to protect your information.",
+          "Consultation records are linked to your account; you can delete individual sessions from the session list.",
+          "During internal testing or product changes, logs may be retained for the minimum period required by law. Account deletion and data export will follow product capabilities when available."
+        ]
+      },
+      {
+        "title": "6. Your rights",
+        "items": [
+          "You may learn how we process your personal information through this page and in-product links.",
+          "You may update account details such as your nickname when settings become available.",
+          "You may delete consultation sessions; contact us through in-product feedback to request account deletion or data export/deletion.",
+          "For sensitive data such as ID numbers, we will explain the purpose and obtain consent before collection. You may refuse, but features that depend on that data may be unavailable."
+        ]
+      },
+      {
+        "title": "7. Sharing, transfer, and disclosure",
+        "items": [
+          "We do not sell your personal information.",
+          "Smart appointment booking may require sharing necessary patient details with partner hospitals or booking platforms, limited to what is needed to complete an appointment and governed by agreements.",
+          "We may disclose information when required by law, legal process, or competent authorities."
+        ]
+      },
+      {
+        "title": "8. Updates and contact",
+        "items": [
+          "We may update this notice from time to time; material changes will be highlighted in the product.",
+          "If you have questions about this notice or how we handle personal information, contact us through in-product feedback or the platform operator.",
+          "Continued use means you have read and understood this notice; new features involving sensitive personal information will require separate explicit consent."
+        ]
+      }
+    ]
   }
 }

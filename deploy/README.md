@@ -92,7 +92,8 @@ git pull
 
 `cardiology-session` 已通过环境变量注入数据库、Redis、AI 地址，**可不手动导入 Nacos**。
 
-若仍希望使用 Nacos 管理配置，将 `services/cardiology-cloud/nacos-config/cardiology-session-server.yaml` 中的地址改为 Docker 服务名后导入控制台。
+若仍希望使用 Nacos 管理配置，将 `services/cardiology-cloud/nacos-config/` 下 YAML 中的地址改为 Docker 服务名后导入控制台。  
+短信登录生产环境需配置 `aliyun.*` 与 `auth.sms.*`，并在网关白名单保留 `/auth/sms/login/**`。
 
 ## 常见问题
 
@@ -115,3 +116,4 @@ git pull
 | `services/cardiology-cloud/Dockerfile` | Java session 服务 |
 | `services/ai-agent/Dockerfile` | Python AI 服务 |
 | `docker/mysql/init/02-chat-message.sql` | 消息表初始化 |
+| `docker/mysql/init/03-chat-session-pinned.sql` | 会话置顶字段迁移 |

@@ -1,0 +1,32 @@
+---
+description: Java Service 层写法约定（cardiology-cloud）
+globs: services/cardiology-cloud/**/*.java
+alwaysApply: false
+---
+
+# Java Service 合并写法
+
+在 `cardiology-cloud` 的 Service 实现类中：
+
+- **每个对外业务能力对应一个 Service 方法**，方法内完成该能力的全部逻辑（参数校验、查询、组装、返回）。
+- **不要把一个业务能力拆成多个 private 小函数**（如 `resolvePage`、`buildWrapper`、`toResponse` 等），除非多处复用。
+- Controller 只负责接参和调用 Service，不写 `BaseResponse.success()` 等业务包装。
+- **对外 API 统一返回 `String`**：Service 内用 `JsonSerialization.toJson(BaseResponse.success(...))` 或 `BaseResponse.fail(...)` 序列化，Controller 原样 `return service.xxx()`，保证前端始终收到 `{ code, message, data }` 结构。
+
+```java
+// ✅ Controller + Service 统一 String JSON
+@PostMapping("/create")
+public String createSession(@Valid @RequestBody CreateChatSessionRequestParams params) {
+    return chatSessionService.createSession(params);
+}
+
+public String createSession(CreateChatSessionRequestParams params) {
+  // 业务逻辑...
+  return JsonSerialization.toJson(BaseResponse.success(chatSession));
+}
+
+// ❌ 避免 Controller/Service 直接返回 BaseResponse 对象（与上述约定不一致）
+public BaseResponse<ChatSessionPageResponse> listSessions(...) {
+    return BaseResponse.success(pageResponse);
+}
+```

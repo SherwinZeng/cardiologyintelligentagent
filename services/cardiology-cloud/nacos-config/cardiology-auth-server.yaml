@@ -9,6 +9,21 @@ auth:
   guest:
     key: "cardiology:guest:session:"
     time: 7200
+  sms:
+    sign-name: 速通互联验证码
+    template-code: "100001"
+    send-interval: 60
+    code-valid-minutes: 5
+    send-lock-key: "cardiology:sms:send:lock:"
+    code-key: "cardiology:sms:send:code:"
+    captcha-key: "cardiology:sms:captcha:"
+    captcha-valid-seconds: 300
+    captcha-length: 4
+    captcha-chars: "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"
+
+aliyun:
+  access-key-id: your-access-key-id
+  access-key-secret: your-access-key-secret
 
 spring:
   datasource:

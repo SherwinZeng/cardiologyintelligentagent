@@ -1,6 +1,7 @@
 export interface ILoginState {
-    id: string,
-    username: string,
-    token: string,
-    avatar: string,
+    id: string
+    username: string
+    phone: string
+    token: string
+    avatar: string
 }

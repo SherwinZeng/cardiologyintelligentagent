@@ -1,0 +1,174 @@
+.cardio-decor {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  mask-image: radial-gradient(
+    ellipse 44% 40% at var(--cardio-decor-mask-center, 50% 50%),
+    transparent 50%,
+    black 78%
+  );
+}
+
+.cardio-decor__item {
+  position: absolute;
+  color: var(--color-primary);
+  opacity: 0.16;
+  transform-origin: center center;
+  will-change: transform, opacity;
+}
+
+html.dark .cardio-decor__item {
+  opacity: 0.22;
+}
+
+.cardio-decor__item.is-motion-float {
+  animation: cardio-decor-float 4.5s ease-in-out infinite;
+}
+
+.cardio-decor__item.is-motion-heartbeat {
+  animation: cardio-decor-heartbeat 2.4s ease-in-out infinite;
+}
+
+.cardio-decor__item.is-motion-drift {
+  animation: cardio-decor-drift 5s ease-in-out infinite;
+}
+
+.cardio-decor__item.is-motion-spin {
+  animation: cardio-decor-spin 12s linear infinite;
+}
+
+.cardio-decor__item.is-motion-glow {
+  animation: cardio-decor-glow 3.2s ease-in-out infinite;
+}
+
+html.dark .cardio-decor__item.is-motion-heartbeat {
+  animation-name: cardio-decor-heartbeat-dark;
+}
+
+html.dark .cardio-decor__item.is-motion-drift {
+  animation-name: cardio-decor-drift-dark;
+}
+
+html.dark .cardio-decor__item.is-motion-glow {
+  animation-name: cardio-decor-glow-dark;
+}
+
+@keyframes cardio-decor-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes cardio-decor-heartbeat {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.14;
+  }
+
+  14% {
+    transform: scale(1.12);
+    opacity: 0.24;
+  }
+
+  28% {
+    transform: scale(1);
+    opacity: 0.16;
+  }
+
+  42% {
+    transform: scale(1.08);
+    opacity: 0.2;
+  }
+}
+
+@keyframes cardio-decor-heartbeat-dark {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.2;
+  }
+
+  14% {
+    transform: scale(1.12);
+    opacity: 0.32;
+  }
+
+  28% {
+    transform: scale(1);
+    opacity: 0.22;
+  }
+
+  42% {
+    transform: scale(1.08);
+    opacity: 0.28;
+  }
+}
+
+@keyframes cardio-decor-drift {
+  0%,
+  100% {
+    transform: translateX(0);
+    opacity: 0.14;
+  }
+
+  50% {
+    transform: translateX(6px);
+    opacity: 0.22;
+  }
+}
+
+@keyframes cardio-decor-drift-dark {
+  0%,
+  100% {
+    transform: translateX(0);
+    opacity: 0.2;
+  }
+
+  50% {
+    transform: translateX(6px);
+    opacity: 0.3;
+  }
+}
+
+@keyframes cardio-decor-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes cardio-decor-glow {
+  0%,
+  100% {
+    opacity: 0.12;
+    filter: drop-shadow(0 0 0 rgb(59 130 246 / 0%));
+  }
+
+  50% {
+    opacity: 0.24;
+    filter: drop-shadow(0 0 6px rgb(59 130 246 / 35%));
+  }
+}
+
+@keyframes cardio-decor-glow-dark {
+  0%,
+  100% {
+    opacity: 0.18;
+    filter: drop-shadow(0 0 0 rgb(96 165 250 / 0%));
+  }
+
+  50% {
+    opacity: 0.32;
+    filter: drop-shadow(0 0 8px rgb(96 165 250 / 45%));
+  }
+}

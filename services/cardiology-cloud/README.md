@@ -29,7 +29,7 @@
 | 服务 | 端口 | 职责 |
 |------|------|------|
 | **cardiology-gateway** | `30000` | 统一入口、JWT 鉴权、路由转发 |
-| **cardiology-auth** | `30002` | 游客登录、JWT 签发、用户表 |
+| **cardiology-auth** | `30002` | 游客 / 短信登录、JWT 签发、用户表 |
 | **cardiology-session** | `30001` | 问诊 API、会话创建、消息历史、Feign 调 AI |
 
 **主要职责：**
@@ -199,6 +199,36 @@ mvn clean package -pl cardiology-gateway -am
 
 ---
 
+### POST `/auth/sms/login/captcha/v1`
+
+获取图形验证码（白名单）。
+
+**请求体：** `{ "phone": "13800138000" }`
+
+**响应：** `data.captchaId`、`data.captchaImage`（Base64）。
+
+---
+
+### POST `/auth/sms/login/sms/v1`
+
+发送短信验证码（白名单，需先通过图形验证码）。
+
+**请求体：** `{ "phone": "...", "captchaId": "...", "captchaCode": "..." }`
+
+---
+
+### POST `/auth/sms/login/v1`
+
+短信验证码登录（白名单），签发 `formal` 类型 JWT。
+
+**请求体：** `{ "phone": "...", "code": "..." }`
+
+**响应：** `data.token`、`data.id`、`data.phone` 等。
+
+> 短信能力依赖 Nacos 中 `aliyun.*` 与 `auth.sms.*` 配置（阿里云号码认证服务）。
+
+---
+
 ### POST `/chat/session/create`
 
 创建问诊会话，写入 `chat_session` 表。
@@ -218,6 +248,32 @@ mvn clean package -pl cardiology-gateway -am
 | `session` | 是 | 客户端生成的 UUID，对应 LangGraph `thread_id` |
 
 **响应：** `data` 为 `ChatSession` 对象（含 `sessionId`、`title`、`status` 等）。
+
+---
+
+### GET `/chat/session/list/v1`
+
+分页查询用户会话列表，支持关键词搜索。
+
+**参数：** `uid`（必填）、`page`、`pageSize`、`keyword`
+
+**响应：** `data.records` 为会话数组，`data.total` / `data.hasMore` 为分页信息；置顶会话优先排序。
+
+---
+
+### POST `/chat/session/pin/v1`
+
+置顶或取消置顶会话。
+
+**请求体：** `{ "uid": "...", "session": "...", "pinned": true }`
+
+---
+
+### DELETE `/chat/session/v1`
+
+删除会话及其全部消息（物理删除，级联删除 `chat_message`）。
+
+**参数：** `uid`、`session`
 
 ---
 
@@ -260,11 +316,18 @@ mvn clean package -pl cardiology-gateway -am
 
 ### GET `/chat/messages/v1`
 
-查询会话历史。
+查询会话历史（游标分页，按时间升序返回当前页）。
 
-**参数：** `uid`、`session`
+**参数：**
 
-**响应：** `data` 为消息数组，按 `createdAt` 升序。
+| 参数 | 必填 | 说明 |
+|------|------|------|
+| `uid` | 是 | 用户 ID |
+| `session` | 是 | 会话 ID |
+| `beforeId` | 否 | 游标：加载此 ID 之前的更早消息 |
+| `pageSize` | 否 | 每页条数，默认 40 |
+
+**响应：** `data.records` 为消息数组，`data.hasMore` 表示是否还有更早记录。
 
 ---
 
@@ -282,6 +345,8 @@ mvn clean package -pl cardiology-gateway -am
 | `preview` | 最近消息摘要 |
 | `message_count` | 消息条数 |
 | `status` | `active` / `archived` |
+| `pinned` | 是否置顶 |
+| `pinned_at` | 置顶时间 |
 
 ### `chat_message`
 
@@ -313,7 +378,7 @@ mvn clean package -pl cardiology-gateway -am
 | 模块 | 状态 |
 |------|------|
 | `cardiology-gateway` | ✅ 已完成 |
-| `cardiology-auth` | ✅ 已完成 |
+| `cardiology-auth` | ✅ 已完成（游客 + 短信） |
 | `cardiology-session` | ✅ 已完成 |
 | Sentinel 限流熔断 | 📋 规划中 |
 | 挂号服务 | 📋 规划中 |

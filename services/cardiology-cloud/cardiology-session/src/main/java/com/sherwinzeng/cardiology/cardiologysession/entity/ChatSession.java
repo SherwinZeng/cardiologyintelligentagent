@@ -35,6 +35,12 @@ public class ChatSession {
     /** 会话状态：active=进行中，archived=已归档 */
     private String status;
 
+    /** 是否置顶 */
+    private Boolean pinned;
+
+    /** 置顶时间 */
+    private LocalDateTime pinnedAt;
+
     /** 创建时间 */
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createdAt;

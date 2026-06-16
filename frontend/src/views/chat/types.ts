@@ -8,6 +8,7 @@ export interface ChatMessage {
   content: string
   time: string
   urgency?: UrgencyLevel
+  animate?: boolean
   sections?: {
     analysis?: string
     advice?: string
@@ -22,6 +23,7 @@ export interface ChatSessionItem {
   time: string
   messageCount: number
   status: string
+  pinned: boolean
   createdAt: string
   updatedAt: string
 }

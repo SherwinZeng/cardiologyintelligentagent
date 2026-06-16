@@ -1,7 +1,7 @@
 package com.sherwinzeng.cardiology.cardiologysession.feign;
 
+import com.sherwinzeng.cardiology.cardiologycloudcommondata.response.BaseResponse;
 import com.sherwinzeng.cardiology.cardiologysession.request.GeneralUnderstandingRequestParams;
-import com.sherwinzeng.cardiology.cardiologysession.response.BaseResponse;
 import com.sherwinzeng.cardiology.cardiologysession.response.GeneralUnderstandingResponse;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PostMapping;

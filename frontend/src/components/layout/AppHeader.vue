@@ -2,8 +2,9 @@
 import { ArrowDown, Bell, QuestionFilled } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { storeToRefs } from 'pinia'
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 import logoUrl from '@/assets/brand/logo.png'
 import mingmingAvatarUrl from '@/assets/character/mingming-avatar.png'
@@ -11,8 +12,10 @@ import LocaleSwitch from '@/components/common/LocaleSwitch.vue'
 import ThemeSwitch from '@/components/common/ThemeSwitch.vue'
 import PrivacyShieldIcon from '@/components/icons/PrivacyShieldIcon.vue'
 import { useUserLoginStore } from '@/stores/login'
+import { buildLoginRoute } from '@/utils/resolveLoginRedirect'
 
 const { t } = useI18n()
+const route = useRoute()
 const router = useRouter()
 const loginStore = useUserLoginStore()
 const { displayName, userLoginStore, isLoggedIn } = storeToRefs(loginStore)
@@ -27,8 +30,16 @@ function handleLogout() {
   router.push('/')
 }
 
+function handleGoHelp() {
+  void router.push({ name: 'help' })
+}
+
+function handleGoPrivacy() {
+  void router.push({ name: 'privacy' })
+}
+
 function handleGoLogin() {
-  router.push('/login')
+  void router.push(buildLoginRoute(route.fullPath))
 }
 </script>
 
@@ -42,11 +53,11 @@ function handleGoLogin() {
     </div>
 
     <div class="app-header__actions">
-      <button type="button" class="app-header__link">
+      <button type="button" class="app-header__link" @click="handleGoPrivacy">
         <PrivacyShieldIcon class="app-header__link-icon app-header__link-icon--privacy" />
         <span class="app-header__link-text">{{ t('nav.privacy') }}</span>
       </button>
-      <button type="button" class="app-header__link">
+      <button type="button" class="app-header__link" @click="handleGoHelp">
         <el-icon class="app-header__link-icon"><QuestionFilled /></el-icon>
         <span class="app-header__link-text">{{ t('nav.help') }}</span>
       </button>

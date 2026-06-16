@@ -61,7 +61,8 @@ docker compose up -d
 ```
 
 启动 MySQL、Redis、Nacos 后，将 `services/cardiology-cloud/nacos-config/` 下三个配置文件导入 Nacos（gateway / auth / session）。  
-认证服务需独立库 `cardiology-auth`（见 README）。
+认证服务需独立库 `cardiology-auth`（见 README）。  
+短信登录需在 `cardiology-auth-server.yaml` 填写阿里云 `access-key-id` / `access-key-secret` 及 `auth.sms` 模板参数。
 
 ### 2. 后端与 AI
 
@@ -93,7 +94,8 @@ yarn install
 yarn dev
 ```
 
-开发默认：前端 `http://127.0.0.1:5173`；Vite 将 `/api` 代理到网关 `:30000`；Axios 基址 `VITE_AUTH_API_BASE_URL=http://127.0.0.1:30000`（登录、问诊均经网关，请求头自动附带 `Authorization: Bearer <token>`）。
+开发默认：前端 `http://127.0.0.1:5173`；Vite 将 `/api` 代理到网关 `:30000`；Axios 基址 `VITE_AUTH_API_BASE_URL=http://127.0.0.1:30000`。  
+登录方式：游客一键体验、手机短信验证码（需配置阿里云）；聊天页支持会话列表 / 置顶 / 删除 / 多轮问诊；写操作经 `useRequireAuth` / `useEnsureAuthWithPrompt` 引导登录。
 
 ---
 

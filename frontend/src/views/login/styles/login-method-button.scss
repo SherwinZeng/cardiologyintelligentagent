@@ -27,7 +27,11 @@
 
   &:disabled {
     cursor: not-allowed;
-    opacity: 0.72;
+    opacity: 0.45;
+  }
+
+  &.is-under-construction:disabled {
+    filter: grayscale(0.35);
   }
 }
 

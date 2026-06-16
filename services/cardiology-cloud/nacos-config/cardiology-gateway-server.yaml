@@ -13,6 +13,9 @@ cardiology:
   auth:
     exclude-paths:
       - /auth/guest/login/**
+      - /auth/sms/login/sms/**
+      - /auth/sms/login/captcha/**
+      - /auth/sms/login/v1
 
 spring:
   data:

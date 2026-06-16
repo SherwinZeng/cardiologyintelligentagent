@@ -1,22 +1,52 @@
 <script setup lang="ts">
 import { Plus, Search } from '@element-plus/icons-vue'
+import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
+import ChatSessionSwipeItem from './ChatSessionSwipeItem.vue'
 import type { ChatSessionItem } from '../types'
+
+const SESSION_PAGER_COUNT = 5
 
 defineProps<{
   sessions: ChatSessionItem[]
   activeSessionId: string
+  loading?: boolean
+  page: number
+  pageSize: number
+  total: number
 }>()
 
-/** 会话切换、新建问诊、搜索关键词交给 ChatView / useChat 处理 */
 const emit = defineEmits<{
   select: [sessionId: string]
   new: []
   search: [keyword: string]
+  pageChange: [page: number]
+  delete: [sessionId: string]
+  pin: [sessionId: string, pinned: boolean]
 }>()
 
 const { t } = useI18n()
+const openedSessionId = ref('')
+const searchInput = ref('')
+
+function handleOpenChange(sessionId: string, open: boolean) {
+  openedSessionId.value = open ? sessionId : ''
+}
+
+function closeSwipeActions() {
+  openedSessionId.value = ''
+}
+
+function handleSearchInput(event: Event) {
+  const value = (event.target as HTMLInputElement).value
+  searchInput.value = value
+  emit('search', value)
+}
+
+function handleListClick() {
+  closeSwipeActions()
+}
 </script>
 
 <template>
@@ -29,47 +59,48 @@ const { t } = useI18n()
       <div class="chat-session-aside__search">
         <el-icon class="chat-session-aside__search-icon"><Search /></el-icon>
         <input
+          v-model="searchInput"
           class="chat-session-aside__search-input"
           type="search"
           :placeholder="t('records.search')"
-          @input="emit('search', ($event.target as HTMLInputElement).value)"
+          @input="handleSearchInput"
         />
       </div>
     </div>
 
     <p class="chat-session-aside__label">{{ t('chat.recent') }}</p>
 
-    <ul v-if="sessions.length > 0" class="chat-session-aside__list">
-      <li v-for="session in sessions" :key="session.id">
-        <button
-          type="button"
-          class="chat-session-aside__item"
-          :class="{ 'is-active': session.id === activeSessionId }"
-          @click="emit('select', session.id)"
-        >
-          <div class="chat-session-aside__item-head">
-            <span class="chat-session-aside__item-title">{{ session.title }}</span>
-            <time class="chat-session-aside__item-time">{{ session.updatedAt }}</time>
-          </div>
-          <p class="chat-session-aside__item-preview">
-            {{ session.preview || '暂无消息' }}
-          </p>
-          <div class="chat-session-aside__item-foot">
-            <span class="chat-session-aside__item-meta">
-              {{ t('records.messages', { n: session.messageCount }) }}
-            </span>
-            <span
-              v-if="session.status"
-              class="chat-session-aside__item-status"
-              :class="`is-${session.status}`"
-            >
-              {{ session.status === 'active' ? '进行中' : session.status }}
-            </span>
-          </div>
-        </button>
-      </li>
-    </ul>
-    <p v-else class="chat-session-aside__empty">{{ t('records.listEmpty') }}</p>
+    <div v-loading="loading" class="chat-session-aside__list-wrap" @click="handleListClick">
+      <ul v-if="sessions.length > 0" class="chat-session-aside__list">
+        <ChatSessionSwipeItem
+          v-for="session in sessions"
+          :key="session.id"
+          :session="session"
+          :active="session.id === activeSessionId"
+          :open="openedSessionId === session.id"
+          @select="emit('select', session.id)"
+          @delete="emit('delete', session.id)"
+          @pin="emit('pin', session.id, !session.pinned)"
+          @open-change="handleOpenChange(session.id, $event)"
+        />
+      </ul>
+      <p v-else class="chat-session-aside__empty">
+        {{ searchInput.trim() ? t('chat.searchEmpty') : t('records.listEmpty') }}
+      </p>
+
+      <el-pagination
+        v-if="total > pageSize"
+        class="chat-session-aside__pagination"
+        small
+        background
+        layout="prev, pager, next"
+        :current-page="page"
+        :page-size="pageSize"
+        :total="total"
+        :pager-count="SESSION_PAGER_COUNT"
+        @current-change="emit('pageChange', $event)"
+      />
+    </div>
   </aside>
 </template>
 

@@ -14,11 +14,13 @@ declare module 'vue' {
     AppFooter: typeof import('./../components/layout/AppFooter.vue')['default']
     AppHeader: typeof import('./../components/layout/AppHeader.vue')['default']
     AppSidebar: typeof import('./../components/layout/AppSidebar.vue')['default']
+    CardioDecorLayer: typeof import('./../components/common/CardioDecorLayer.vue')['default']
     CuteHeartIcon: typeof import('./../components/icons/CuteHeartIcon.vue')['default']
     ElAvatar: typeof import('element-plus/es')['ElAvatar']
     ElBadge: typeof import('element-plus/es')['ElBadge']
     ElButton: typeof import('element-plus/es')['ElButton']
     ElConfigProvider: typeof import('element-plus/es')['ElConfigProvider']
+    ElDialog: typeof import('element-plus/es')['ElDialog']
     ElDropdown: typeof import('element-plus/es')['ElDropdown']
     ElDropdownItem: typeof import('element-plus/es')['ElDropdownItem']
     ElDropdownMenu: typeof import('element-plus/es')['ElDropdownMenu']
@@ -26,11 +28,18 @@ declare module 'vue' {
     ElFormItem: typeof import('element-plus/es')['ElFormItem']
     ElIcon: typeof import('element-plus/es')['ElIcon']
     ElInput: typeof import('element-plus/es')['ElInput']
+    ElPagination: typeof import('element-plus/es')['ElPagination']
+    ElTooltip: typeof import('element-plus/es')['ElTooltip']
     LocaleSwitch: typeof import('./../components/common/LocaleSwitch.vue')['default']
+    LoginPromptDialog: typeof import('./../components/auth/LoginPromptDialog.vue')['default']
+    MingmingLoadingTipContent: typeof import('./../components/common/MingmingLoadingTipContent.vue')['default']
     PagePlaceholder: typeof import('./../components/common/PagePlaceholder.vue')['default']
     PrivacyShieldIcon: typeof import('./../components/icons/PrivacyShieldIcon.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     ThemeSwitch: typeof import('./../components/common/ThemeSwitch.vue')['default']
+  }
+  export interface GlobalDirectives {
+    vLoading: typeof import('element-plus/es')['ElLoadingDirective']
   }
 }
