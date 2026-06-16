@@ -1,6 +1,15 @@
 server:
   port: 30002
 
+jwt:
+  sign-key: change-me-to-the-same-value-as-auth-service
+  token-validity: 7200
+
+auth:
+  guest:
+    key: "cardiology:guest:session:"
+    time: 7200
+
 spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver

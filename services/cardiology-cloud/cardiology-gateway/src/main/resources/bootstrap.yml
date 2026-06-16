@@ -1,0 +1,16 @@
+spring:
+  application:
+    name: cardiology-gateway-server
+  main:
+    web-application-type: reactive
+  cloud:
+    nacos:
+      server-addr: 127.0.0.1:8848
+      username: nacos
+      password: zxr18072164990
+      discovery:
+        server-addr: ${spring.cloud.nacos.server-addr}
+      config:
+        file-extension: yaml
+  config:
+    import: optional:nacos:${spring.application.name}.yaml

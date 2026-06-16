@@ -1,6 +1,7 @@
 .login-page {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
+  overflow-y: auto;
   background: var(--login-panel-bg);
 }
 @media (max-width: 960px) {

@@ -22,26 +22,30 @@ public class JsonWebTokenFactory {
     private Long validity;
 
     public String generateToken(String userId) {
-        Instant now = Instant.now();
-        JwtClaimsSet claims = JwtClaimsSet.builder()
-                .subject(userId)
-                .claim("userId", userId)
-                .issuedAt(now)
-                .expiresAt(now.plusSeconds(validity))
-                .build();
-        return encode(claims);
+        return generateToken(userId, null, validity);
     }
 
     public String generateToken(String userId, Long time) {
+        return generateToken(userId, null, time);
+    }
+
+    /**
+     * @param userId        用户 ID
+     * @param userType      用户类型，见 {@link com.sherwinzeng.cardiology.cardiologycloudcommonutils.auth.AuthUserType}
+     * @param expireSeconds 过期秒数，null 时使用默认配置
+     */
+    public String generateToken(String userId, String userType, Long expireSeconds) {
         Instant now = Instant.now();
-        long expireSeconds = time != null ? time : validity;
-        JwtClaimsSet claims = JwtClaimsSet.builder()
+        long seconds = expireSeconds != null ? expireSeconds : validity;
+        JwtClaimsSet.Builder builder = JwtClaimsSet.builder()
                 .subject(userId)
                 .claim("userId", userId)
                 .issuedAt(now)
-                .expiresAt(now.plusSeconds(expireSeconds))
-                .build();
-        return encode(claims);
+                .expiresAt(now.plusSeconds(seconds));
+        if (userType != null && !userType.isBlank()) {
+            builder.claim(com.sherwinzeng.cardiology.cardiologycloudcommonutils.auth.AuthUserType.CLAIM_NAME, userType);
+        }
+        return encode(builder.build());
     }
 
     private String encode(JwtClaimsSet claims) {

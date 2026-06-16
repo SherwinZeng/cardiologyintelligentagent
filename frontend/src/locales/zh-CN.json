@@ -5,9 +5,11 @@
   },
   "nav": {
     "home": "首页",
+    "consult": "智能问诊",
     "records": "问诊记录",
     "reports": "健康报告",
-    "healthData": "健康数据",
+    "appointment": "智能挂号",
+    "healthData": "档案管理",
     "healthKnowledge": "健康知识",
     "followUp": "随访提醒",
     "settings": "系统设置",
@@ -76,7 +78,13 @@
     "search": "搜索会话",
     "continue": "继续对话",
     "detail": "查看详情",
-    "messages": "{n}条对话"
+    "messages": "{n}条对话",
+    "newSession": "新建问诊",
+    "currentSession": "当前问诊",
+    "listEmpty": "暂无历史会话，可从首页发起或点击「新建问诊」",
+    "empty": "选择或新建一条问诊会话",
+    "emptyHint": "在首页输入症状并「开始问诊」，或点击左侧「新建问诊」",
+    "draftLabel": "待发送的首条消息"
   },
   "appt": {
     "title": "预约心内科挂号",
@@ -108,6 +116,9 @@
     "care": "就医协助"
   },
   "user": {
-    "guest": "张先生"
+    "guest": "张先生",
+    "notLoggedIn": "未登录",
+    "logout": "退出登录",
+    "goLogin": "去登录"
   }
 }
