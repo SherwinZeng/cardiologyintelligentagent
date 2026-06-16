@@ -42,13 +42,13 @@ flowchart TB
 
     subgraph Gateway["接入层 · 规划"]
         GW[Spring Cloud Gateway]
-        Auth[认证服务]
     end
 
     subgraph Java["Java 业务层"]
+        Auth[cardiology-auth]
         Session[cardiology-session]
         Appt[挂号服务 · 规划]
-        Sentinel[Sentinel 限流熔断]
+        Sentinel[Sentinel 限流熔断 · 规划]
     end
 
     subgraph AI["Python AI 层"]
@@ -72,11 +72,14 @@ flowchart TB
     Session -->|OpenFeign| Agent
     Agent --> Graph
     Agent --> Milvus
+    Auth --> MySQL
+    Auth --> Redis
     Session --> MySQL
     Session --> Redis
     Appt --> MQ
     Appt --> MySQL
     MQ --> Appt
+    Auth -.-> Nacos
     Session -.-> Nacos
 ```
 
@@ -84,10 +87,13 @@ flowchart TB
 
 ```mermaid
 flowchart LR
-    Client[客户端 / curl] --> Session[cardiology-session :30001]
-    Session --> MySQL[(MySQL chat_message)]
-    Session --> Redis[(Redis 内部 token)]
+    Web[frontend :5173] -->|/api 代理| Session[cardiology-session :30001]
+    Web -->|直连| Auth[cardiology-auth :30002]
+    Session --> MySQL1[(MySQL cardiology)]
+    Session --> Redis1[(Redis 内部 token)]
     Session -->|Feign| Agent[ai-agent :8000]
+    Auth --> MySQL2[(MySQL cardiology-auth)]
+    Auth --> Redis2[(Redis 游客会话)]
     Agent --> Graph[LangGraph 铭铭]
 ```
 
@@ -103,13 +109,15 @@ flowchart LR
 | 消息持久化 | 每轮 user + assistant 写入 MySQL | ✅ |
 | 历史查询 | 按 session 拉取聊天记录 | ✅ |
 | 内部鉴权 | Java → Python 一次性 Redis token | ✅ |
-| 指南 RAG | Milvus 向量库检索心血管指南，增强铭铭作答 | 📋 |
-| 前端界面 | Vue 3 + TypeScript 聊天页 | 📋 |
-| 网关 / 认证 | 统一入口、登录鉴权 | 📋 |
+| 游客登录 | JWT 签发、Redis 会话缓存、`cardiology-auth` 独立库 | ✅ |
+| 前端界面 | Vue 3 登录 / 欢迎 / 聊天 / 记录 / 报告页骨架 | 🚧 |
+| 短信 / 第三方登录 | 手机、QQ、GitHub 等 | 📋 |
+| 网关 | Spring Cloud Gateway 统一入口 | 📋 |
 | 熔断限流 | Sentinel 保护 AI / 核心接口 | 📋 |
+| 指南 RAG | Milvus 向量库检索心血管指南，增强铭铭作答 | 📋 |
 | 异步挂号 | RabbitMQ 异步处理挂号任务，Seata 保障号源与订单多库一致 | 📋 |
 | 结果通知 | 挂号成功 / 失败经 RabbitMQ 投递，推送用户通知 | 📋 |
-| 云部署 | Docker + 公网可访问 | 📋 |
+| 云部署 | Docker Compose + Nginx 公网可访问 | 🚧 |
 
 ---
 
@@ -142,43 +150,56 @@ flowchart LR
 | 项目 | 路径 | 职责 | 文档 |
 |------|------|------|------|
 | Java 中间层 | [`services/cardiology-cloud`](services/cardiology-cloud/) | REST API、Feign、落库、微服务底座 | [README](services/cardiology-cloud/README.md) |
+| 认证服务 | [`services/cardiology-cloud/cardiology-auth`](services/cardiology-cloud/cardiology-auth/) | 游客 / 多方式登录、JWT、用户表 | 见 [Nacos 配置](services/cardiology-cloud/nacos-config/cardiology-auth-server.yaml) |
+| 会话服务 | [`services/cardiology-cloud/cardiology-session`](services/cardiology-cloud/cardiology-session/) | 问诊 API、消息历史、Feign 调 AI | [README](services/cardiology-cloud/README.md) |
 | Python AI | [`services/ai-agent`](services/ai-agent/) | 铭铭 · LangGraph 编排 | [README](services/ai-agent/README.md) |
-| 前端 | [`frontend`](frontend/) | Vue 3 + TS 用户界面 | 待开发 |
+| 前端 | [`frontend`](frontend/) | Vue 3 + TS 用户界面 | 见 [`.env.example`](frontend/.env.example) |
+| 部署 | [`deploy`](deploy/) | 云服务器 Docker Compose 部署 | [README](deploy/README.md) |
 
 ---
 
 ## 技术栈
 
-### 前端（规划）
+### 前端
 
-Vue 3 · TypeScript · Vite
+Vue 3 · TypeScript · Vite · Pinia · Vue Router · Element Plus · Axios · Sass · vue-i18n
 
 ### Java
 
-Spring Boot 3.2 · Spring Cloud · Spring Cloud Alibaba · Nacos · OpenFeign · MyBatis-Plus · MySQL · Redis · Sentinel · RabbitMQ（规划）· Seata（规划）
+Spring Boot 3.2 · Spring Cloud · Spring Cloud Alibaba · Nacos · OpenFeign · Spring Security · JWT · MyBatis-Plus · MySQL · Redis · Sentinel（规划）· RabbitMQ（规划）· Seata（规划）
 
 ### Python
 
 Django 6 · DRF · LangGraph · LangChain · DeepSeek V4 Flash · Milvus · langchain-milvus · Poetry
 
-### 运维（规划）
+### 运维
 
-Docker · Docker Compose · 云服务器 · HTTPS
+Docker · Docker Compose · Nginx · 云服务器 · HTTPS（规划）
 
 ---
 
 ## 仓库结构
 
 ```text
-CardiologyIntelligentAgent/
+CardiologyIntelligentAgent/          # Git 仓库根目录（.git 在此）
 ├── README.md
-├── frontend/                      # Vue 3 + TS
+├── docker-compose.yaml              # 本地 MySQL / Redis / Nacos
+├── docker-compose.prod.yaml         # 生产全栈 Compose
+├── deploy/                          # 云部署脚本与说明
+├── docs/                            # 项目文档
+├── frontend/                        # Vue 3 + TS 前端
+│   ├── src/views/                   # login / welcome / chat / records / reports
+│   └── .env.development             # VITE_AUTH_API_BASE_URL 等
 └── services/
-    ├── cardiology-cloud/          # Java 微服务
-    │   ├── cardiology-session/    # 会话 & 问诊 API ✅
-    │   └── cardiology-cloud-common/
-    └── ai-agent/                  # Python AI ✅
+    ├── cardiology-cloud/            # Java 微服务
+    │   ├── cardiology-auth/         # 认证服务 :30002 ✅
+    │   ├── cardiology-session/      # 会话 & 问诊 API :30001 ✅
+    │   ├── cardiology-cloud-common/
+    │   └── nacos-config/
+    └── ai-agent/                    # Python AI :8000 ✅
 ```
+
+> **Monorepo 说明**：Git 根目录是 `CardiologyIntelligentAgent/`，不是 `frontend/`。在任意子目录执行 `git commit` 都会提交整个仓库中已 stage 的改动；习惯上在根目录操作更直观。
 
 ---
 
@@ -186,7 +207,26 @@ CardiologyIntelligentAgent/
 
 ### 环境要求
 
-JDK 17 · Maven 3.9+ · Python 3.13+ · Poetry · MySQL 8 · Redis · Nacos · Milvus（规划）· RabbitMQ（规划）
+JDK 17 · Maven 3.9+ · Node.js 20+ · Yarn · Python 3.13+ · Poetry · Docker · MySQL 8 · Redis · Nacos · Milvus（规划）· RabbitMQ（规划）
+
+### 0. 启动中间件
+
+```bash
+# 仓库根目录
+docker compose up -d
+```
+
+启动 MySQL（`3306`）、Redis（`6379`）、Nacos（控制台 `8080`，客户端 `8848`）。
+
+首次使用认证服务前，需创建独立库（若尚未存在）：
+
+```sql
+CREATE DATABASE IF NOT EXISTS `cardiology-auth`
+  DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+GRANT ALL ON `cardiology-auth`.* TO 'cardiology'@'%';
+```
+
+将 [`nacos-config/cardiology-session-server.yaml`](services/cardiology-cloud/nacos-config/cardiology-session-server.yaml) 与 [`cardiology-auth-server.yaml`](services/cardiology-cloud/nacos-config/cardiology-auth-server.yaml) 导入 Nacos。
 
 ### 1. 启动 AI 服务
 
@@ -200,16 +240,39 @@ poetry run python manage.py runserver 0.0.0.0:8000
 ### 2. 启动 Java 服务
 
 ```bash
-# 启动 MySQL、Redis、Nacos
-# 导入 services/cardiology-cloud/nacos-config/cardiology-session-server.yaml
-
+# cardiology-session（问诊）
 cd services/cardiology-cloud/cardiology-session
+mvn spring-boot:run
+
+# cardiology-auth（认证，另开终端）
+cd services/cardiology-cloud/cardiology-auth
 mvn spring-boot:run
 ```
 
-### 3. 冒烟测试
+### 3. 启动前端
 
 ```bash
+cd frontend
+cp .env.example .env.development   # 若无则复制
+yarn install
+yarn dev
+```
+
+开发环境默认：
+
+- 前端：`http://127.0.0.1:5173`
+- 问诊 API：Vite 将 `/api` 代理到 `http://127.0.0.1:30001`
+- 认证 API：`VITE_AUTH_API_BASE_URL=http://127.0.0.1:30002`
+
+### 4. 冒烟测试
+
+```bash
+# 游客登录
+curl -X POST http://127.0.0.1:30002/auth/guest/login/v1 \
+  -H "Content-Type: application/json" \
+  -d '{"guestId":"guest-demo-001"}'
+
+# 问诊
 curl -X POST http://127.0.0.1:30001/chat/generalUnderstanding/v1 \
   -H "Content-Type: application/json" \
   -d '{"uid":"user-001","session":"session-001","message":"我胸口疼"}'
@@ -219,10 +282,11 @@ curl -X POST http://127.0.0.1:30001/chat/generalUnderstanding/v1 \
 
 ## API 概览
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| `POST` | `/chat/generalUnderstanding/v1` | 普通医疗对话 |
-| `GET` | `/chat/messages/v1` | 查询会话消息历史 |
+| 服务 | 方法 | 路径 | 说明 |
+|------|------|------|------|
+| auth | `POST` | `/auth/guest/login/v1` | 游客登录，返回 JWT |
+| session | `POST` | `/chat/generalUnderstanding/v1` | 普通医疗对话 |
+| session | `GET` | `/chat/messages/v1` | 查询会话消息历史 |
 
 > Python `POST /api/cardiology/general-understanding/` 仅供 Java Feign 内部调用。
 
@@ -232,10 +296,11 @@ curl -X POST http://127.0.0.1:30001/chat/generalUnderstanding/v1 \
 
 | 阶段 | 内容 |
 |------|------|
-| **一期 · 当前** | 铭铭问诊 MVP、消息落库、GitHub 开源 |
-| **二期** | Vue 3 前端、Gateway、认证、Sentinel |
-| **三期** | 云部署、线上可演示 |
-| **四期** | 见[核心能力](#核心能力)：异步挂号、结果通知、指南 RAG |
+| **一期 · 已完成** | 铭铭问诊 MVP、消息落库、GitHub 开源 |
+| **二期 · 进行中** | Vue 3 前端、游客认证（`cardiology-auth`）、页面骨架与登录联调 |
+| **三期** | Gateway、短信 / 第三方登录、Sentinel、路由守卫与 Token 透传 |
+| **四期** | 云部署、线上可演示 |
+| **五期** | 见[核心能力](#核心能力)：异步挂号、结果通知、指南 RAG |
 | **远期** | Redis AI 记忆、深度推理、多模态 |
 
 ---
