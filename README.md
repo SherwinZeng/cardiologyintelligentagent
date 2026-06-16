@@ -41,7 +41,7 @@ flowchart TB
         Web[Vue 3 + TypeScript]
     end
 
-    subgraph Gateway["接入层 · 规划"]
+    subgraph Gateway["接入层"]
         GW[Spring Cloud Gateway]
     end
 
@@ -88,13 +88,15 @@ flowchart TB
 
 ```mermaid
 flowchart LR
-    Web[frontend :5173] -->|/api 代理| Session[cardiology-session :30001]
-    Web -->|直连| Auth[cardiology-auth :30002]
+    Web[frontend :5173] -->|/api 代理| GW[cardiology-gateway :30000]
+    GW -->|JWT 鉴权| Auth[cardiology-auth :30002]
+    GW -->|JWT 鉴权| Session[cardiology-session :30001]
     Session --> MySQL1[(MySQL cardiology)]
     Session --> Redis1[(Redis 内部 token)]
     Session -->|Feign| Agent[ai-agent :8000]
     Auth --> MySQL2[(MySQL cardiology-auth)]
     Auth --> Redis2[(Redis 游客会话)]
+    GW --> Redis3[(Redis 游客会话校验)]
     Agent --> Graph[LangGraph 铭铭]
 ```
 
@@ -111,9 +113,12 @@ flowchart LR
 | 历史查询 | 按 session 拉取聊天记录 | ✅ |
 | 内部鉴权 | Java → Python 一次性 Redis token | ✅ |
 | 游客登录 | JWT 签发、Redis 会话缓存、`cardiology-auth` 独立库 | ✅ |
-| 前端界面 | Vue 3 登录 / 欢迎 / 聊天 / 记录 / 报告页骨架 | 🚧 |
+| 网关 | Spring Cloud Gateway 统一入口、`/auth` / `/chat` 路由 | ✅ |
+| Token 鉴权 | 网关 JWT 校验、游客 Redis 会话、透传 `X-User-Id` | ✅ |
+| 会话创建 | `chat_session` 表、`POST /chat/session/create` | ✅ |
+| 前端界面 | Vue 3 登录 / 欢迎 / 聊天页、游客登录与会话创建联调 | 🚧 |
 | 短信 / 第三方登录 | 手机、QQ、GitHub 等 | 📋 |
-| 网关 | Spring Cloud Gateway 统一入口 | 📋 |
+| 路由守卫 | 未登录跳转、Token 过期处理 | 📋 |
 | 熔断限流 | Sentinel 保护 AI / 核心接口 | 📋 |
 | 指南 RAG | Milvus 向量库检索心血管指南，增强铭铭作答 | 📋 |
 | 异步挂号 | RabbitMQ 异步处理挂号任务，Seata 保障号源与订单多库一致 | 📋 |
@@ -151,8 +156,9 @@ flowchart LR
 | 项目 | 路径 | 职责 | 文档 |
 |------|------|------|------|
 | Java 中间层 | [`services/cardiology-cloud`](services/cardiology-cloud/) | REST API、Feign、落库、微服务底座 | [README](services/cardiology-cloud/README.md) |
+| 网关 | [`services/cardiology-cloud/cardiology-gateway`](services/cardiology-cloud/cardiology-gateway/) | 统一入口、JWT 鉴权、路由转发 | [Nacos 配置](services/cardiology-cloud/nacos-config/cardiology-gateway-server.yaml) |
 | 认证服务 | [`services/cardiology-cloud/cardiology-auth`](services/cardiology-cloud/cardiology-auth/) | 游客 / 多方式登录、JWT、用户表 | 见 [Nacos 配置](services/cardiology-cloud/nacos-config/cardiology-auth-server.yaml) |
-| 会话服务 | [`services/cardiology-cloud/cardiology-session`](services/cardiology-cloud/cardiology-session/) | 问诊 API、消息历史、Feign 调 AI | [README](services/cardiology-cloud/README.md) |
+| 会话服务 | [`services/cardiology-cloud/cardiology-session`](services/cardiology-cloud/cardiology-session/) | 问诊 API、会话创建、消息历史、Feign 调 AI | [README](services/cardiology-cloud/README.md) |
 | Python AI | [`services/ai-agent`](services/ai-agent/) | 铭铭 · LangGraph 编排 | [README](services/ai-agent/README.md) |
 | 前端 | [`frontend`](frontend/) | Vue 3 + TS 用户界面 | 见 [`.env.example`](frontend/.env.example) |
 | 部署 | [`deploy`](deploy/) | 云服务器 Docker Compose 部署 | [README](deploy/README.md) |
@@ -193,6 +199,7 @@ CardiologyIntelligentAgent/          # Git 仓库根目录（.git 在此）
 │   └── .env.development             # VITE_AUTH_API_BASE_URL 等
 └── services/
     ├── cardiology-cloud/            # Java 微服务
+    │   ├── cardiology-gateway/      # 网关 :30000 ✅
     │   ├── cardiology-auth/         # 认证服务 :30002 ✅
     │   ├── cardiology-session/      # 会话 & 问诊 API :30001 ✅
     │   ├── cardiology-cloud-common/
@@ -227,7 +234,13 @@ CREATE DATABASE IF NOT EXISTS `cardiology-auth`
 GRANT ALL ON `cardiology-auth`.* TO 'cardiology'@'%';
 ```
 
-将 [`nacos-config/cardiology-session-server.yaml`](services/cardiology-cloud/nacos-config/cardiology-session-server.yaml) 与 [`cardiology-auth-server.yaml`](services/cardiology-cloud/nacos-config/cardiology-auth-server.yaml) 导入 Nacos。
+将 [`nacos-config/`](services/cardiology-cloud/nacos-config/) 下三个配置文件导入 Nacos：
+
+- `cardiology-gateway-server.yaml`
+- `cardiology-auth-server.yaml`
+- `cardiology-session-server.yaml`
+
+> 网关 `jwt.sign-key` 须与 auth 服务保持一致。
 
 ### 1. 启动 AI 服务
 
@@ -241,12 +254,16 @@ poetry run python manage.py runserver 0.0.0.0:8000
 ### 2. 启动 Java 服务
 
 ```bash
-# cardiology-session（问诊）
+# cardiology-auth（认证）
+cd services/cardiology-cloud/cardiology-auth
+mvn spring-boot:run
+
+# cardiology-session（问诊，另开终端）
 cd services/cardiology-cloud/cardiology-session
 mvn spring-boot:run
 
-# cardiology-auth（认证，另开终端）
-cd services/cardiology-cloud/cardiology-auth
+# cardiology-gateway（网关，另开终端；依赖 auth / session 已注册 Nacos）
+cd services/cardiology-cloud/cardiology-gateway
 mvn spring-boot:run
 ```
 
@@ -262,20 +279,27 @@ yarn dev
 开发环境默认：
 
 - 前端：`http://127.0.0.1:5173`
-- 问诊 API：Vite 将 `/api` 代理到 `http://127.0.0.1:30001`
-- 认证 API：`VITE_AUTH_API_BASE_URL=http://127.0.0.1:30002`
+- 统一 API 入口：Vite 将 `/api` 代理到网关 `http://127.0.0.1:30000`（去掉 `/api` 前缀）
+- Axios 基址：`VITE_AUTH_API_BASE_URL=http://127.0.0.1:30000`（登录、问诊均经网关）
 
 ### 4. 冒烟测试
 
 ```bash
-# 游客登录
-curl -X POST http://127.0.0.1:30002/auth/guest/login/v1 \
+# 游客登录（经网关）
+TOKEN=$(curl -s -X POST http://127.0.0.1:30000/auth/guest/login/v1 \
   -H "Content-Type: application/json" \
-  -d '{"guestId":"guest-demo-001"}'
+  -d '{"guestId":"guest-demo-001"}' | jq -r '.data.token')
 
-# 问诊
-curl -X POST http://127.0.0.1:30001/chat/generalUnderstanding/v1 \
+# 创建会话
+curl -X POST http://127.0.0.1:30000/chat/session/create \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"uid":"<登录返回的 id>","session":"session-001"}'
+
+# 问诊（需 JWT）
+curl -X POST http://127.0.0.1:30000/chat/generalUnderstanding/v1 \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
   -d '{"uid":"user-001","session":"session-001","message":"我胸口疼"}'
 ```
 
@@ -283,13 +307,14 @@ curl -X POST http://127.0.0.1:30001/chat/generalUnderstanding/v1 \
 
 ## API 概览
 
-| 服务 | 方法 | 路径 | 说明 |
-|------|------|------|------|
-| auth | `POST` | `/auth/guest/login/v1` | 游客登录，返回 JWT |
-| session | `POST` | `/chat/generalUnderstanding/v1` | 普通医疗对话 |
-| session | `GET` | `/chat/messages/v1` | 查询会话消息历史 |
+| 服务 | 方法 | 路径 | 鉴权 | 说明 |
+|------|------|------|------|------|
+| gateway → auth | `POST` | `/auth/guest/login/v1` | 无 | 游客登录，返回 JWT |
+| gateway → session | `POST` | `/chat/session/create` | JWT | 创建问诊会话 |
+| gateway → session | `POST` | `/chat/generalUnderstanding/v1` | JWT | 普通医疗对话 |
+| gateway → session | `GET` | `/chat/messages/v1` | JWT | 查询会话消息历史 |
 
-> Python `POST /api/cardiology/general-understanding/` 仅供 Java Feign 内部调用。
+> 对外请求统一经网关 `:30000`；Python `POST /api/cardiology/general-understanding/` 仅供 Java Feign 内部调用。
 
 ---
 
@@ -298,9 +323,9 @@ curl -X POST http://127.0.0.1:30001/chat/generalUnderstanding/v1 \
 | 阶段 | 内容 |
 |------|------|
 | **一期 · 已完成** | 铭铭问诊 MVP、消息落库、GitHub 开源 |
-| **二期 · 进行中** | Vue 3 前端、游客认证（`cardiology-auth`）、页面骨架与登录联调 |
-| **三期** | Gateway、短信 / 第三方登录、Sentinel、路由守卫与 Token 透传 |
-| **四期** | 云部署、线上可演示 |
+| **二期 · 已完成** | 游客认证（`cardiology-auth`）、Gateway 统一入口、JWT / Token 鉴权、会话创建 |
+| **三期 · 进行中** | Vue 3 前端联调（登录、会话创建）、问诊发送、路由守卫 |
+| **四期** | 短信 / 第三方登录、Sentinel、云部署（Gateway 纳入 Compose） |
 | **五期** | 见[核心能力](#核心能力)：异步挂号、结果通知、指南 RAG |
 | **远期** | Redis AI 记忆、深度推理、多模态 |
 

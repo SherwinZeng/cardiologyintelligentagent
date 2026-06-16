@@ -60,7 +60,7 @@ JDK 17 · Maven 3.9+ · Node.js 20+ · Yarn · Python 3.13+ · Poetry · Docker
 docker compose up -d
 ```
 
-启动 MySQL、Redis、Nacos 后，将 `services/cardiology-cloud/nacos-config/` 下的配置导入 Nacos。  
+启动 MySQL、Redis、Nacos 后，将 `services/cardiology-cloud/nacos-config/` 下三个配置文件导入 Nacos（gateway / auth / session）。  
 认证服务需独立库 `cardiology-auth`（见 README）。
 
 ### 2. 后端与 AI
@@ -72,12 +72,16 @@ cp .env.example .env
 poetry install --no-root
 poetry run python manage.py runserver 0.0.0.0:8000
 
-# 问诊 session（:30001）
+# 认证 auth（:30002）
+cd services/cardiology-cloud/cardiology-auth
+mvn spring-boot:run
+
+# 问诊 session（:30001，另开终端）
 cd services/cardiology-cloud/cardiology-session
 mvn spring-boot:run
 
-# 认证 auth（:30002，另开终端）
-cd services/cardiology-cloud/cardiology-auth
+# 网关 gateway（:30000，另开终端；依赖 auth / session 已注册 Nacos）
+cd services/cardiology-cloud/cardiology-gateway
 mvn spring-boot:run
 ```
 
@@ -89,7 +93,7 @@ yarn install
 yarn dev
 ```
 
-开发默认：前端 `http://127.0.0.1:5173`；问诊 API 经 Vite 代理 `/api` → `:30001`；认证 API 见 `frontend/.env.development` 中 `VITE_AUTH_API_BASE_URL`。
+开发默认：前端 `http://127.0.0.1:5173`；Vite 将 `/api` 代理到网关 `:30000`；Axios 基址 `VITE_AUTH_API_BASE_URL=http://127.0.0.1:30000`（登录、问诊均经网关，请求头自动附带 `Authorization: Bearer <token>`）。
 
 ---
 

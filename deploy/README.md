@@ -7,12 +7,14 @@ Internet :80
     ↓
 frontend (Nginx)
     ├→ 静态资源 dist
-    └→ /api/* 反代 → cardiology-session:30001
+    └→ /api/* 反代 → cardiology-session:30001（当前直连，未经网关）
                            └→ ai-agent:8000（内网）
                            ├→ MySQL
                            └→ Redis
 Nacos（内网，配置中心）
 ```
+
+> **注意**：本地开发已启用 `cardiology-gateway :30000` 统一鉴权与路由；生产 Compose 尚未纳入 gateway / auth，后续四期将补齐。
 
 公网只暴露 **frontend 的 80 端口**；MySQL、Redis、Nacos、Java、Python 均在 Docker 内网。
 
@@ -52,8 +54,22 @@ chmod +x deploy/deploy.sh
 ## 冒烟测试
 
 ```bash
+# 当前生产编排直连 session，无需 JWT
 curl -X POST "http://<服务器IP>/api/chat/generalUnderstanding/v1" \
   -H "Content-Type: application/json" \
+  -d '{"uid":"user-001","session":"session-001","message":"我胸口疼"}'
+```
+
+本地开发（经网关）：
+
+```bash
+TOKEN=$(curl -s -X POST http://127.0.0.1:30000/auth/guest/login/v1 \
+  -H "Content-Type: application/json" \
+  -d '{"guestId":"guest-demo-001"}' | jq -r '.data.token')
+
+curl -X POST http://127.0.0.1:30000/chat/generalUnderstanding/v1 \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
   -d '{"uid":"user-001","session":"session-001","message":"我胸口疼"}'
 ```
 
