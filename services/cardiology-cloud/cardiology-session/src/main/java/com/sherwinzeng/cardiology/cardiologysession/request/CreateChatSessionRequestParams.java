@@ -1,0 +1,13 @@
+package com.sherwinzeng.cardiology.cardiologysession.request;
+
+import jakarta.validation.constraints.NotBlank;
+import lombok.Data;
+
+@Data
+public class CreateChatSessionRequestParams {
+    @NotBlank(message = "uid 不能为空")
+    private String uid;
+
+    @NotBlank(message = "session 不能为空")
+    private String session;
+}

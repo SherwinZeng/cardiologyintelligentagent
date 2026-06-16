@@ -250,6 +250,7 @@ Python → 校验后删除
 | 多轮 session | ✅ |
 | 内部 token 鉴权 | ✅ |
 | 寒暄 / 作者彩蛋 | ✅ |
+| 分流关键词扩展 | ✅（症状 / 元对话 / 作者相关） |
 | Redis Checkpoint | 📋 |
 | reasoning / multimodal | 📋 |
 | SSE 流式 | 📋 |

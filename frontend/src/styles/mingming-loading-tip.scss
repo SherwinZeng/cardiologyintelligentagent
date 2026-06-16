@@ -1,0 +1,52 @@
+.mingming-loading-tip.el-popper {
+  min-width: 200px;
+  max-width: 280px;
+  padding: 10px 14px !important;
+  border: 1px solid rgb(37 99 235 / 12%) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 10px 24px rgb(37 99 235 / 12%) !important;
+}
+
+.mingming-loading-tip__content {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  align-items: center;
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.mingming-loading-tip__avatar {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 8px rgb(37 99 235 / 16%));
+  animation: mingming-loading-bounce 1.2s ease-in-out infinite;
+}
+
+.mingming-loading-tip__text {
+  flex: 1;
+  min-width: 0;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.45;
+  text-align: left;
+  word-break: keep-all;
+}
+
+html.dark .mingming-loading-tip__text {
+  color: #e2e8f0;
+}
+
+@keyframes mingming-loading-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-4px);
+  }
+}

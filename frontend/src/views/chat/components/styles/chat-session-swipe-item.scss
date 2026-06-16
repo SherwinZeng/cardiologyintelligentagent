@@ -1,0 +1,134 @@
+.chat-session-swipe {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-card);
+}
+
+.chat-session-swipe__actions {
+  position: absolute;
+  inset: 0 0 0 auto;
+  display: flex;
+  width: 76px;
+}
+
+.chat-session-swipe__action {
+  display: inline-flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  padding: 0;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+
+  .el-icon {
+    font-size: 17px;
+  }
+}
+
+.chat-session-swipe__action--pin {
+  background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
+}
+
+.chat-session-swipe__action--delete {
+  background: linear-gradient(180deg, #f87171 0%, #ef4444 100%);
+}
+
+.chat-session-swipe__content {
+  position: relative;
+  z-index: 1;
+  touch-action: pan-y;
+  transition: transform 0.18s ease;
+
+  &.is-dragging {
+    transition: none;
+  }
+}
+
+.chat-session-aside__item {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  text-align: left;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-card);
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+
+  &.is-active {
+    background: var(--bg-session-active);
+    border-color: rgb(37 99 235 / 35%);
+  }
+
+  &.is-pinned {
+    border-color: rgb(37 99 235 / 22%);
+  }
+}
+
+.chat-session-aside__item-head {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.chat-session-aside__item-title {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  font-size: var(--font-size-body);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.chat-session-aside__pin-icon {
+  flex-shrink: 0;
+  color: var(--color-primary);
+  font-size: 14px;
+}
+
+.chat-session-aside__item-time {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.chat-session-aside__item-preview {
+  display: -webkit-box;
+  margin: 0 0 8px;
+  overflow: hidden;
+  font-size: var(--font-size-caption);
+  line-height: 1.5;
+  color: var(--text-secondary);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.chat-session-aside__item-foot {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.chat-session-aside__item-meta {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.chat-session-aside__item-status {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: 999px;
+
+  &.is-active {
+    color: var(--color-primary);
+    background: rgb(37 99 235 / 12%);
+  }
+}

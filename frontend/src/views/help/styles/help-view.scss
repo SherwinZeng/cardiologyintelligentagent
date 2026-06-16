@@ -1,0 +1,99 @@
+.help-page {
+  box-sizing: border-box;
+  min-height: 100%;
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 28px 24px 40px;
+}
+
+.help-page__hero {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  margin-bottom: 28px;
+  padding: 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+
+.help-page__avatar {
+  flex-shrink: 0;
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+}
+
+.help-page__title {
+  margin: 0 0 8px;
+  font-size: var(--font-size-card-title);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.help-page__subtitle {
+  margin: 0;
+  font-size: var(--font-size-body);
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.help-page__sections {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.help-page__section {
+  padding: 20px 22px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-card);
+}
+
+.help-page__section-title {
+  margin: 0 0 12px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.help-page__list {
+  margin: 0;
+  padding-left: 1.2em;
+  color: var(--text-secondary);
+  font-size: var(--font-size-body);
+  line-height: 1.75;
+
+  li + li {
+    margin-top: 8px;
+  }
+}
+
+.help-page__notice {
+  margin-top: 20px;
+  padding: 14px 16px;
+  font-size: var(--font-size-caption);
+  line-height: 1.7;
+  color: var(--text-disclaimer);
+  background: var(--bg-disclaimer);
+  border-radius: var(--radius-card);
+}
+
+.help-page__actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 24px;
+}
+
+@media (max-width: 640px) {
+  .help-page {
+    padding: 20px 16px 32px;
+  }
+
+  .help-page__hero {
+    flex-direction: column;
+    text-align: center;
+  }
+}

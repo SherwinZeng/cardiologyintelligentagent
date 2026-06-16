@@ -10,11 +10,10 @@ import com.sherwinzeng.cardiology.cardiologyauth.response.GuestLoginResponse;
 import com.sherwinzeng.cardiology.cardiologyauth.services.GuestLoginService;
 import com.sherwinzeng.cardiology.cardiologycloudcommondata.response.BaseResponse;
 import com.sherwinzeng.cardiology.cardiologycloudcommondata.response.ResponseCode;
+import com.sherwinzeng.cardiology.cardiologycloudcommonutils.auth.AuthUserType;
 import com.sherwinzeng.cardiology.cardiologycloudcommonutils.json.JsonSerialization;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,7 +37,8 @@ public class GuestLoginServiceImpl extends ServiceImpl<UserRepository, User> imp
             redisTemplate.delete(redisKey);
             return JsonSerialization.toJson(BaseResponse.fail(ResponseCode.FORBIDDEN, "账号已在其他设备登录，已强制下线"));
         }
-        String token = jsonWebTokenFactory.generateToken(guestLoginRequestParams.getId(), authGuestProperties.getTime());
+        String token = jsonWebTokenFactory.generateToken(
+                guestLoginRequestParams.getId(), AuthUserType.GUEST, authGuestProperties.getTime());
         redisTemplate.opsForValue().set(redisKey, token, Duration.ofSeconds(authGuestProperties.getTime()));
         return JsonSerialization.toJson(BaseResponse.success(new GuestLoginResponse(guestLoginRequestParams.getId(), token)));
     }

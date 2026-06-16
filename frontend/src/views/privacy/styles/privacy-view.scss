@@ -1,0 +1,114 @@
+.privacy-page {
+  box-sizing: border-box;
+  min-height: 100%;
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 28px 24px 40px;
+}
+
+.privacy-page__hero {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  margin-bottom: 28px;
+  padding: 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+
+.privacy-page__icon-wrap {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  border-radius: 50%;
+}
+
+.privacy-page__icon {
+  width: 36px;
+  height: 36px;
+}
+
+.privacy-page__title {
+  margin: 0 0 8px;
+  font-size: var(--font-size-card-title);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.privacy-page__subtitle {
+  margin: 0;
+  font-size: var(--font-size-body);
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.privacy-page__updated {
+  margin: 10px 0 0;
+  font-size: var(--font-size-caption);
+  color: var(--text-disclaimer);
+}
+
+.privacy-page__sections {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.privacy-page__section {
+  padding: 20px 22px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-card);
+}
+
+.privacy-page__section--highlight {
+  border-color: color-mix(in srgb, var(--color-primary) 35%, var(--border-color));
+  background: color-mix(in srgb, var(--color-primary) 4%, var(--bg-card));
+}
+
+.privacy-page__section-title {
+  margin: 0 0 12px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.privacy-page__list {
+  margin: 0;
+  padding-left: 1.2em;
+  color: var(--text-secondary);
+  font-size: var(--font-size-body);
+  line-height: 1.75;
+
+  li + li {
+    margin-top: 8px;
+  }
+}
+
+.privacy-page__notice {
+  margin-top: 20px;
+  padding: 14px 16px;
+  font-size: var(--font-size-caption);
+  line-height: 1.7;
+  color: var(--text-disclaimer);
+  background: var(--bg-disclaimer);
+  border-radius: var(--radius-card);
+}
+
+@media (max-width: 640px) {
+  .privacy-page {
+    padding: 20px 16px 32px;
+  }
+
+  .privacy-page__hero {
+    flex-direction: column;
+    text-align: center;
+  }
+}

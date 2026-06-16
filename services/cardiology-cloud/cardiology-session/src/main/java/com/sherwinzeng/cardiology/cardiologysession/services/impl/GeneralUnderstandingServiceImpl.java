@@ -7,7 +7,7 @@ import com.sherwinzeng.cardiology.cardiologysession.entity.ChatMessageRole;
 import com.sherwinzeng.cardiology.cardiologysession.repository.ChatMessageMapper;
 import com.sherwinzeng.cardiology.cardiologysession.request.GeneralUnderstandingRequestParams;
 import com.sherwinzeng.cardiology.cardiologysession.feign.DRFAgentFeignClient;
-import com.sherwinzeng.cardiology.cardiologysession.response.BaseResponse;
+import com.sherwinzeng.cardiology.cardiologycloudcommondata.response.BaseResponse;
 import com.sherwinzeng.cardiology.cardiologysession.response.GeneralUnderstandingResponse;
 import com.sherwinzeng.cardiology.cardiologysession.services.GeneralUnderstandingService;
 import lombok.RequiredArgsConstructor;

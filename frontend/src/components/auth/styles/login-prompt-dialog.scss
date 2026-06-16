@@ -1,0 +1,44 @@
+.login-prompt-dialog__body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 4px 8px 0;
+  text-align: center;
+}
+
+.login-prompt-dialog__avatar {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+}
+
+.login-prompt-dialog__message {
+  margin: 0;
+  font-size: var(--font-size-body);
+  line-height: 1.7;
+  color: var(--text-secondary);
+}
+
+.login-prompt-dialog__actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  width: 100%;
+}
+
+.login-prompt-dialog__guest-wrap {
+  display: inline-flex;
+}
+
+.login-prompt-dialog__guest-btn {
+  min-width: 132px;
+}
+
+.login-prompt-dialog__guest-icon {
+  margin-right: 4px;
+}
+
+:deep(.login-prompt-dialog .el-dialog__footer) {
+  padding-top: 8px;
+}

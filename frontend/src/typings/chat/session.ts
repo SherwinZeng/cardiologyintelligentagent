@@ -1,0 +1,27 @@
+export interface ICreateSessionRequest {
+  uid: string
+  session: string
+}
+
+export interface ICreateSessionResponse {
+  sessionId: string
+  uid: string
+  title: string
+  preview: string
+  messageCount: number
+  status: string
+  pinned?: boolean
+  pinnedAt?: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export type IChatSessionResponse = ICreateSessionResponse
+
+export interface IChatSessionPageResponse {
+  records: IChatSessionResponse[]
+  total: number
+  page: number
+  pageSize: number
+  hasMore: boolean
+}

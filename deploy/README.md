@@ -7,12 +7,14 @@ Internet :80
     ↓
 frontend (Nginx)
     ├→ 静态资源 dist
-    └→ /api/* 反代 → cardiology-session:30001
+    └→ /api/* 反代 → cardiology-session:30001（当前直连，未经网关）
                            └→ ai-agent:8000（内网）
                            ├→ MySQL
                            └→ Redis
 Nacos（内网，配置中心）
 ```
+
+> **注意**：本地开发已启用 `cardiology-gateway :30000` 统一鉴权与路由；生产 Compose 尚未纳入 gateway / auth，后续四期将补齐。
 
 公网只暴露 **frontend 的 80 端口**；MySQL、Redis、Nacos、Java、Python 均在 Docker 内网。
 
@@ -52,8 +54,22 @@ chmod +x deploy/deploy.sh
 ## 冒烟测试
 
 ```bash
+# 当前生产编排直连 session，无需 JWT
 curl -X POST "http://<服务器IP>/api/chat/generalUnderstanding/v1" \
   -H "Content-Type: application/json" \
+  -d '{"uid":"user-001","session":"session-001","message":"我胸口疼"}'
+```
+
+本地开发（经网关）：
+
+```bash
+TOKEN=$(curl -s -X POST http://127.0.0.1:30000/auth/guest/login/v1 \
+  -H "Content-Type: application/json" \
+  -d '{"guestId":"guest-demo-001"}' | jq -r '.data.token')
+
+curl -X POST http://127.0.0.1:30000/chat/generalUnderstanding/v1 \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
   -d '{"uid":"user-001","session":"session-001","message":"我胸口疼"}'
 ```
 
@@ -76,7 +92,8 @@ git pull
 
 `cardiology-session` 已通过环境变量注入数据库、Redis、AI 地址，**可不手动导入 Nacos**。
 
-若仍希望使用 Nacos 管理配置，将 `services/cardiology-cloud/nacos-config/cardiology-session-server.yaml` 中的地址改为 Docker 服务名后导入控制台。
+若仍希望使用 Nacos 管理配置，将 `services/cardiology-cloud/nacos-config/` 下 YAML 中的地址改为 Docker 服务名后导入控制台。  
+短信登录生产环境需配置 `aliyun.*` 与 `auth.sms.*`，并在网关白名单保留 `/auth/sms/login/**`。
 
 ## 常见问题
 
@@ -99,3 +116,4 @@ git pull
 | `services/cardiology-cloud/Dockerfile` | Java session 服务 |
 | `services/ai-agent/Dockerfile` | Python AI 服务 |
 | `docker/mysql/init/02-chat-message.sql` | 消息表初始化 |
+| `docker/mysql/init/03-chat-session-pinned.sql` | 会话置顶字段迁移 |
