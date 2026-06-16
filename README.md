@@ -13,8 +13,9 @@
 [![DeepSeek](https://img.shields.io/badge/DeepSeek-V4_Flash-1C3C3C)](https://www.deepseek.com/)
 [![RabbitMQ](https://img.shields.io/badge/RabbitMQ-消息队列-FF6600?logo=rabbitmq&logoColor=white)](https://www.rabbitmq.com/)
 [![Milvus](https://img.shields.io/badge/Milvus-向量库-00A1FF)](https://milvus.io/)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
-[项目愿景](#项目愿景) · [架构](#系统架构) · [技术栈](#技术栈) · [子项目](#子项目) · [路线图](#路线图) · [快速开始](#快速开始)
+[项目愿景](#项目愿景) · [架构](#系统架构) · [技术栈](#技术栈) · [子项目](#子项目) · [路线图](#路线图) · [快速开始](#快速开始) · [许可证](#许可证)
 
 </div>
 
@@ -305,9 +306,19 @@ curl -X POST http://127.0.0.1:30001/chat/generalUnderstanding/v1 \
 
 ---
 
+## 许可证
+
+本项目采用 [Apache License 2.0](LICENSE) 开源。
+
+你可以自由使用、修改和分发本仓库代码，但需保留版权声明与许可证全文；若修改了文件，需标明变更。详见 [LICENSE](LICENSE)。
+
+---
+
 ## 免责声明
 
 本项目仅供健康信息参考与教育用途，**不能替代**专业医生的诊断、治疗与处方。如有不适，请及时就医。
+
+开源许可证管代码使用权限；**医疗免责**管产品使用风险，二者互不替代。
 
 ---
 
