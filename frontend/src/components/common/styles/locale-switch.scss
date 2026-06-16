@@ -1,0 +1,17 @@
+.locale-switch {
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  padding: 0;
+}
+
+.locale-switch__text {
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+:deep(.el-dropdown-menu__item.is-active) {
+  color: var(--color-primary);
+  font-weight: 600;
+}

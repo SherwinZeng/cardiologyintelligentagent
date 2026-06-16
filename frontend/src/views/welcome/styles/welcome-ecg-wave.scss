@@ -1,0 +1,53 @@
+.welcome-ecg {
+  --ecg-line: rgb(37 99 235 / 32%);
+  --ecg-beam: rgb(37 99 235 / 90%);
+  --ecg-glow: rgb(59 130 246 / 40%);
+
+  position: absolute;
+  top: 58%;
+  right: -8%;
+  left: -8%;
+  z-index: 0;
+  height: 108px;
+  pointer-events: none;
+  mask-image: radial-gradient(ellipse 36% 70% at 50% 50%, transparent 0%, black 72%);
+}
+
+html.dark .welcome-ecg {
+  --ecg-line: rgb(96 165 250 / 40%);
+  --ecg-beam: rgb(147 197 253 / 98%);
+  --ecg-glow: rgb(96 165 250 / 45%);
+}
+
+.welcome-ecg__svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.welcome-ecg__rail,
+.welcome-ecg__beam {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.welcome-ecg__rail {
+  stroke: var(--ecg-line);
+  stroke-width: 2.4;
+}
+
+.welcome-ecg__beam {
+  stroke: var(--ecg-beam);
+  stroke-width: 2.4;
+  filter: drop-shadow(0 0 6px var(--ecg-glow));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .welcome-ecg__beam {
+    stroke-dasharray: none !important;
+    opacity: 0.55;
+  }
+}

@@ -1,0 +1,36 @@
+.app-footer {
+  flex-shrink: 0;
+  padding: 12px 24px 16px;
+  background: var(--bg-disclaimer);
+  border-top: 1px solid var(--border-color);
+}
+
+.app-footer__inner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-caption);
+  line-height: 1.6;
+  color: var(--text-disclaimer);
+  text-align: center;
+}
+
+.app-footer__link {
+  color: var(--text-disclaimer);
+  text-decoration: none;
+  transition: color 0.2s ease;
+
+  &:hover {
+    color: var(--color-primary);
+  }
+}
+
+.app-footer__sep {
+  opacity: 0.45;
+}
+
+.app-footer__copy {
+  color: var(--text-disclaimer);
+}

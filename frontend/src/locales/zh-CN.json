@@ -1,0 +1,113 @@
+{
+  "app": {
+    "name": "心血管智能问诊平台",
+    "tagline": "您的心血管健康 AI 助手"
+  },
+  "nav": {
+    "home": "首页",
+    "records": "问诊记录",
+    "reports": "健康报告",
+    "healthData": "健康数据",
+    "healthKnowledge": "健康知识",
+    "followUp": "随访提醒",
+    "settings": "系统设置",
+    "privacy": "隐私保护",
+    "help": "使用帮助"
+  },
+  "sidebar": {
+    "promo": "专业守护 您的心血管健康"
+  },
+  "locale": {
+    "label": "语言",
+    "zh-CN": "简体中文",
+    "en-US": "English"
+  },
+  "theme": {
+    "label": "主题",
+    "light": "浅色",
+    "dark": "深色",
+    "system": "跟随系统"
+  },
+  "footer": {
+    "copyright": "© {year} {owner}"
+  },
+  "welcome": {
+    "hi": "你好，我是铭铭",
+    "desc": "您的心血管健康 AI 助手，可以帮您初步了解症状、判断缓急",
+    "tipLabel": "小贴士",
+    "tips": [
+      "规律作息对心脏很重要哦~",
+      "每天步行 30 分钟，有助于保护心血管。",
+      "少盐少油，血压更稳、心脏更轻松。",
+      "保持平和心态，避免情绪大起大落。",
+      "出现胸闷胸痛别硬扛，及时咨询更安心。",
+      "戒烟限酒，是给心脏最好的礼物之一。"
+    ],
+    "input": "请描述您的症状或健康问题...",
+    "start": "开始问诊",
+    "chip1": "胸口闷痛怎么办",
+    "chip2": "高血压需要注意什么",
+    "chip3": "心电图结果怎么看",
+    "footer": "本平台提供 AI 辅助问诊建议，不能替代医生诊断。如症状严重或持续，请及时就医。"
+  },
+  "chat": {
+    "recent": "最近会话",
+    "new": "新建问诊",
+    "with": "正在与铭铭对话",
+    "current": "当前问诊：{topic}",
+    "input": "描述您的症状，铭铭为您解答...",
+    "send": "发送"
+  },
+  "ai": {
+    "assistant": "铭铭 · AI心血管助手",
+    "analysis": "病情分析",
+    "advice": "就医建议",
+    "notes": "注意事项",
+    "disclaimer": "本回复仅供健康信息参考，不能替代专业医生诊断与处方。如有不适请及时就医。"
+  },
+  "urgency": {
+    "low": "低紧急",
+    "moderate": "中等紧急",
+    "high": "高度紧急",
+    "all": "全部缓急"
+  },
+  "records": {
+    "title": "问诊记录",
+    "search": "搜索会话",
+    "continue": "继续对话",
+    "detail": "查看详情",
+    "messages": "{n}条对话"
+  },
+  "appt": {
+    "title": "预约心内科挂号",
+    "submit": "提交预约",
+    "status": "预约状态",
+    "processing": "您的预约正在处理中，请稍候...",
+    "async": "提交后将异步处理，结果通过消息通知"
+  },
+  "login": {
+    "title": "你回来啦～",
+    "subtitle": "登录后就可以和铭铭聊天啦",
+    "phone": "手机号",
+    "code": "短信验证码",
+    "sendCode": "发送验证码",
+    "resendCode": "{seconds}s 后重发",
+    "remember": "记住我",
+    "submit": "登 录",
+    "or": "或",
+    "github": "GitHub 登录",
+    "qq": "QQ 登录",
+    "guest": "访客登录",
+    "noAccount": "还没有账号？",
+    "registerNow": "快来注册吧✨",
+    "disclaimer": "本平台仅供健康信息参考，不能替代医生诊断"
+  },
+  "feat": {
+    "consult": "智能问诊",
+    "urgency": "缓急判断",
+    "care": "就医协助"
+  },
+  "user": {
+    "guest": "张先生"
+  }
+}

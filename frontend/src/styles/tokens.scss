@@ -1,0 +1,201 @@
+/* 设计 Token · 亮色默认，html.dark 覆盖暗色 */
+/* 来源：素材包 DESIGN.md / DESIGN-DARK.md */
+
+:root {
+  color-scheme: light;
+
+  /* 品牌色 */
+  --color-primary: #2563eb;
+  --color-primary-light: #3b82f6;
+  --color-primary-hover: #1d4ed8;
+
+  /* 背景 */
+  --bg-page: #f5f7fa;
+  --bg-card: #ffffff;
+  --bg-header: #ffffff;
+  --bg-nav: #2563eb;
+  --bg-sidebar: #ffffff;
+  --bg-input: #ffffff;
+  --bg-session-active: #eff6ff;
+  --bg-disclaimer: #f3f4f6;
+  --bg-warning: #fef3c7;
+  --header-brand-color: var(--color-primary);
+  --sidebar-brand-color: var(--color-primary);
+
+  /* 文字 */
+  --text-primary: #1f2937;
+  --text-secondary: #6b7280;
+  --text-inverse: #ffffff;
+  --text-disclaimer: #6b7280;
+
+  /* 边框 */
+  --border-color: #e5e7eb;
+  --border-color-strong: #d1d5db;
+
+  /* 缓急（亮暗共用） */
+  --urgency-low: #22c55e;
+  --urgency-moderate: #eab308;
+  --urgency-high: #ef4444;
+  --urgency-moderate-text: #713f12;
+
+  /* 聊天气泡 */
+  --bubble-user-bg: #2563eb;
+  --bubble-user-text: #ffffff;
+  --bubble-ai-bg: #ffffff;
+  --bubble-ai-text: #1f2937;
+
+  /* 圆角 */
+  --radius-card: 12px;
+  --radius-button: 8px;
+  --radius-input: 8px;
+  --radius-bubble: 12px;
+
+  /* 阴影 */
+  --shadow-card: 0 2px 12px rgb(0 0 0 / 6%);
+
+  /* 布局 */
+  --header-height: 56px;
+  --sidebar-width: 240px;
+  --sidebar-rail-width: 72px;
+  --session-list-width: 280px;
+
+  /* 欢迎页 */
+  --welcome-hero-bg: linear-gradient(180deg, #f0f7ff 0%, #f8fafc 45%, #f5f7fa 100%);
+  --welcome-heart-glow: rgb(255 255 255 / 85%);
+  --welcome-heart-fill: rgb(255 255 255 / 55%);
+  --welcome-ecg-color: rgb(37 99 235 / 10%);
+  --welcome-title-color: var(--color-primary);
+  --welcome-chip-bg: rgb(255 255 255 / 92%);
+  --welcome-chip-border: rgb(229 231 235 / 90%);
+  --welcome-chip-hover-border: rgb(37 99 235 / 35%);
+  --welcome-chip-shadow: 0 2px 10px rgb(15 23 42 / 4%);
+  --welcome-chip-hover-shadow: 0 6px 20px rgb(37 99 235 / 10%);
+  --welcome-input-shadow: 0 2px 12px rgb(15 23 42 / 5%);
+  --welcome-input-focus-ring: 0 0 0 3px rgb(37 99 235 / 10%);
+  --welcome-start-shadow: 0 8px 20px rgb(37 99 235 / 22%);
+  --welcome-character-shadow: 0 16px 28px rgb(37 99 235 / 10%);
+  --welcome-character-shell-bg: radial-gradient(
+    ellipse 90% 88% at 50% 90%,
+    rgb(255 255 255 / 92%) 0%,
+    rgb(239 246 255 / 58%) 40%,
+    transparent 74%
+  );
+  --welcome-character-aura: radial-gradient(
+    circle,
+    rgb(59 130 246 / 22%) 0%,
+    rgb(59 130 246 / 8%) 45%,
+    transparent 74%
+  );
+
+  /* 登录页 */
+  --login-hero-bg: linear-gradient(160deg, #1d4ed8 0%, #2563eb 42%, #3b82f6 100%);
+  --login-panel-bg: linear-gradient(180deg, #ffffff 0%, #fafcff 52%, #eff6ff 100%);
+  --login-submit-shadow: 0 10px 24px rgb(37 99 235 / 24%);
+  --login-disclaimer-color: rgb(156 163 175 / 72%);
+  --login-character-shell-bg: radial-gradient(
+    ellipse 90% 88% at 50% 92%,
+    rgb(255 255 255 / 94%) 0%,
+    rgb(219 234 254 / 55%) 38%,
+    transparent 72%
+  );
+  --login-character-aura: radial-gradient(
+    circle,
+    rgb(255 255 255 / 28%) 0%,
+    rgb(255 255 255 / 10%) 45%,
+    transparent 74%
+  );
+  --login-input-hover-ring: rgb(37 99 235 / 32%);
+  --login-input-hover-shadow: rgb(37 99 235 / 8%);
+  --login-input-focus-ring: rgb(37 99 235 / 10%);
+  --login-input-focus-shadow: rgb(37 99 235 / 12%);
+
+  /* 字体 */
+  --font-family: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  --font-size-title: 20px;
+  --font-size-card-title: 16px;
+  --font-size-body: 14px;
+  --font-size-caption: 12px;
+}
+
+html.dark {
+  color-scheme: dark;
+
+  --color-primary: #60a5fa;
+  --color-primary-light: #93c5fd;
+  --color-primary-hover: #bfdbfe;
+
+  --bg-page: #0b1120;
+  --bg-card: #141c2b;
+  --bg-header: #0f172a;
+  --bg-nav: #0f172a;
+  --bg-sidebar: #0f172a;
+  --bg-input: #182034;
+  --bg-session-active: rgb(59 130 246 / 10%);
+  --bg-disclaimer: #0f172a;
+  --bg-warning: #78350f;
+  --header-brand-color: #f1f5f9;
+  --sidebar-brand-color: #f1f5f9;
+
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-inverse: #f8fafc;
+  --text-disclaimer: #64748b;
+
+  --border-color: #243044;
+  --border-color-strong: #33465f;
+
+  --bubble-user-bg: #2563eb;
+  --bubble-user-text: #ffffff;
+  --bubble-ai-bg: #1a2332;
+  --bubble-ai-text: #e2e8f0;
+
+  --shadow-card: 0 8px 24px rgb(0 0 0 / 28%);
+
+  --welcome-hero-bg: linear-gradient(180deg, #0f172a 0%, #111827 52%, #0b1120 100%);
+  --welcome-heart-glow: rgb(96 165 250 / 14%);
+  --welcome-heart-fill: rgb(59 130 246 / 8%);
+  --welcome-ecg-color: rgb(96 165 250 / 18%);
+  --welcome-title-color: #f1f5f9;
+  --welcome-chip-bg: rgb(20 28 43 / 88%);
+  --welcome-chip-border: #2a3548;
+  --welcome-chip-hover-border: rgb(96 165 250 / 42%);
+  --welcome-chip-shadow: none;
+  --welcome-chip-hover-shadow: 0 8px 24px rgb(37 99 235 / 12%);
+  --welcome-input-shadow: none;
+  --welcome-input-focus-ring: 0 0 0 3px rgb(59 130 246 / 16%);
+  --welcome-start-shadow: 0 8px 24px rgb(37 99 235 / 22%);
+  --welcome-character-shadow: 0 16px 32px rgb(0 0 0 / 32%);
+  --welcome-character-shell-bg: radial-gradient(
+    ellipse 90% 88% at 50% 90%,
+    rgb(30 41 59 / 72%) 0%,
+    rgb(15 23 42 / 38%) 42%,
+    transparent 74%
+  );
+  --welcome-character-aura: radial-gradient(
+    circle,
+    rgb(96 165 250 / 12%) 0%,
+    rgb(59 130 246 / 5%) 45%,
+    transparent 74%
+  );
+
+  --login-hero-bg: linear-gradient(165deg, #0c1929 0%, #1e3a8a 46%, #1d4ed8 100%);
+  --login-panel-bg: linear-gradient(180deg, #0b1120 0%, #0f172a 100%);
+  --login-submit-shadow: 0 10px 28px rgb(37 99 235 / 28%);
+  --login-disclaimer-color: rgb(100 116 139 / 62%);
+  --login-character-shell-bg: radial-gradient(
+    ellipse 90% 88% at 50% 92%,
+    rgb(96 165 250 / 16%) 0%,
+    rgb(59 130 246 / 8%) 42%,
+    transparent 72%
+  );
+  --login-character-aura: radial-gradient(
+    circle,
+    rgb(96 165 250 / 20%) 0%,
+    rgb(59 130 246 / 8%) 45%,
+    transparent 74%
+  );
+  --login-input-hover-ring: rgb(96 165 250 / 36%);
+  --login-input-hover-shadow: rgb(59 130 246 / 10%);
+  --login-input-focus-ring: rgb(59 130 246 / 18%);
+  --login-input-focus-shadow: rgb(59 130 246 / 14%);
+}

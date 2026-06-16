@@ -1,0 +1,159 @@
+# 云服务器生产环境一键编排
+# 启动: docker compose -f docker-compose.prod.yaml --env-file deploy/.env up -d --build
+# 停止: docker compose -f docker-compose.prod.yaml --env-file deploy/.env down
+
+name: cardiology-prod
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: cardiology-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      TZ: Asia/Shanghai
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'mysqladmin',
+          'ping',
+          '-h',
+          '127.0.0.1',
+          '-u${MYSQL_USER}',
+          '-p${MYSQL_PASSWORD}',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+    networks:
+      - cardiology-net
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: cardiology-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - cardiology-net
+
+  nacos:
+    image: nacos/nacos-server:latest
+    container_name: cardiology-nacos
+    restart: unless-stopped
+    environment:
+      MODE: standalone
+      PREFER_HOST_MODE: hostname
+      JVM_XMS: 256m
+      JVM_XMX: 512m
+      NACOS_AUTH_ENABLE: 'false'
+      NACOS_AUTH_TOKEN: 'VGhpc0lzTXlDdXN0b21TZWNyZXRLZXkwMTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5'
+      NACOS_AUTH_IDENTITY_KEY: serverIdentity
+      NACOS_AUTH_IDENTITY_VALUE: security
+      TZ: Asia/Shanghai
+    volumes:
+      - nacos-data:/home/nacos/data
+      - nacos-logs:/home/nacos/logs
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://127.0.0.1:8080/next/']
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+    networks:
+      - cardiology-net
+
+  ai-agent:
+    build:
+      context: ./services/ai-agent
+    container_name: cardiology-ai-agent
+    restart: unless-stopped
+    environment:
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-False}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
+      QIANWEN_API_KEY: ${QIANWEN_API_KEY:-}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: ${REDIS_DB:-0}
+      LANGCHAIN_TRACING_V2: ${LANGCHAIN_TRACING_V2:-false}
+      LANGCHAIN_API_KEY: ${LANGCHAIN_API_KEY:-}
+      LANGCHAIN_PROJECT: ${LANGCHAIN_PROJECT:-cardiology-intelligent-agent}
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - cardiology-net
+
+  cardiology-session:
+    build:
+      context: ./services/cardiology-cloud
+    container_name: cardiology-session
+    restart: unless-stopped
+    environment:
+      SPRING_CLOUD_NACOS_SERVER_ADDR: nacos:8848
+      SPRING_CLOUD_NACOS_CONFIG_SERVER_ADDR: nacos:8848
+      SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR: nacos:8848
+      SPRING_CLOUD_NACOS_USERNAME: ${NACOS_USERNAME}
+      SPRING_CLOUD_NACOS_PASSWORD: ${NACOS_PASSWORD}
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      CARDIOLOGY_AI_AGENT_BASE_URL: http://ai-agent:8000/api/cardiology/
+      SERVER_PORT: 30001
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nacos:
+        condition: service_healthy
+      ai-agent:
+        condition: service_started
+    networks:
+      - cardiology-net
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
+    container_name: cardiology-frontend
+    restart: unless-stopped
+    ports:
+      - '${FRONTEND_HTTP_PORT:-80}:80'
+    depends_on:
+      - cardiology-session
+    networks:
+      - cardiology-net
+
+networks:
+  cardiology-net:
+    name: cardiology-prod-net
+
+volumes:
+  mysql-data:
+  redis-data:
+  nacos-data:
+  nacos-logs:
