@@ -648,8 +648,7 @@ chmod +x deploy/deploy.sh
 
 浏览器访问 `http://<服务器IP>/`（Nginx 静态页 + `/api` 反代 gateway）。  
 **Flutter App** 配置 `API_BASE_URL=https://<域名>/api`（或开发环境 `http://<IP>:30000`），与 Web **共用 JWT 与接口**。  
-HTTPS、已有数据卷迁移、常见问题见 [deploy/README.md](deploy/README.md)。  
-已知前端 / 业务 Bug 见 [docs/known-issues.md](docs/known-issues.md)。
+HTTPS、已有数据卷迁移、常见问题见 [deploy/README.md](deploy/README.md)。
 
 ---
 
@@ -658,7 +657,7 @@ HTTPS、已有数据卷迁移、常见问题见 [deploy/README.md](deploy/README
 | 阶段 | 内容 |
 |------|------|
 | **已完成** | 铭铭问诊 MVP、消息落库、游客/正式分流、Gateway、JWT 鉴权、会话管理、短信登录、formal 会话生命周期、Docker 全栈部署 |
-| **进行中** | Web 记录/报告/挂号页、**Flutter 移动端**、问诊总结、多模态上传、payment；前端体验 Bug（见 [known-issues](docs/known-issues.md)） |
+| **进行中** | Web 记录/报告/挂号页、**Flutter 移动端**、问诊总结、多模态上传、payment；前端聊天体验优化 |
 | **规划中** | Sentinel 全链路、Seata TCC、OSS 影像库、指南 RAG、爬虫代挂、DeepSeek Pro、App 推送 |
 
 ---
