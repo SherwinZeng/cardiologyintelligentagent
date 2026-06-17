@@ -7,7 +7,7 @@ jwt:
 auth:
   guest:
     key: "cardiology:guest:session:"
-    time: 7200
+    time: 3600
 
 cardiology:
   auth:

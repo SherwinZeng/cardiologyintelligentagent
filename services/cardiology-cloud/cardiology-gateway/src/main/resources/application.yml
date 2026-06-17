@@ -1,34 +1,13 @@
-# 网关本地兜底配置（Nacos 为空时生效；生产环境建议同步到 Nacos：cardiology-gateway-server.yaml）
-
-server:
-  port: 30000  # 网关对外端口
-
-# JWT 验签密钥，必须与 cardiology-auth 服务的 jwt.sign-key 完全一致
-jwt:
-  sign-key: change-me-to-the-same-value-as-auth-service
-
-# 游客会话配置，与 cardiology-auth 保持一致
-# key 含冒号，YAML 中必须用引号包裹
-auth:
-  guest:
-    key: "cardiology:guest:session:"  # Redis key 前缀，完整 key = 前缀 + userId
-    time: 7200                          # 会话有效期（秒），auth 服务写入 Redis TTL 时使用
-
-# 鉴权白名单：匹配到的路径不校验 token
-cardiology:
-  auth:
-    exclude-paths:
-      - /auth/guest/login/**  # 游客登录接口
-
+# 本地 profile=local（默认）；Docker 生产见 application-docker.yml（profile=docker）
 spring:
+  profiles:
+    default: local
   data:
     redis:
-      host: 127.0.0.1  # 与 auth 服务共用，用于校验游客会话
+      host: 127.0.0.1
       port: 6379
-
   cloud:
     gateway:
-      # 跨域配置，允许前端本地开发访问
       globalcors:
         add-to-simple-url-handler-mapping: true
         cors-configurations:
@@ -45,34 +24,27 @@ spring:
             allowedHeaders: "*"
             allowCredentials: true
             maxAge: 3600
-
-      # 去重 CORS 响应头，避免多个过滤器重复添加
       default-filters:
         - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_FIRST
-
       discovery:
         locator:
-          enabled: false  # 关闭自动路由，使用下方手动配置的路由
+          enabled: false
 
-      routes:
-        # 认证服务：/auth/** → cardiology-auth-server
-        - id: cardiology-auth
-          uri: lb://cardiology-auth-server
-          predicates:
-            - Path=/auth/**
-          filters:
-            - name: Retry
-              args:
-                retries: 1
-                statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
+server:
+  port: 30000
 
-        # 会话服务：/chat/** → cardiology-session-server（需鉴权）
-        - id: cardiology-session
-          uri: lb://cardiology-session-server
-          predicates:
-            - Path=/chat/**
-          filters:
-            - name: Retry
-              args:
-                retries: 1
-                statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
+jwt:
+  sign-key: change-me-to-the-same-value-as-auth-service
+
+auth:
+  guest:
+    key: "cardiology:guest:session:"
+    time: 3600
+
+cardiology:
+  auth:
+    exclude-paths:
+      - /auth/guest/login/**
+      - /auth/sms/login/sms/**
+      - /auth/sms/login/captcha/**
+      - /auth/sms/login/v1

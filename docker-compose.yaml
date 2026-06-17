@@ -79,6 +79,28 @@ services:
     networks:
       - cardiology-net
 
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: cardiology-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: cardiology
+      RABBITMQ_DEFAULT_PASS: cardiology
+      TZ: Asia/Shanghai
+    ports:
+      - "5672:5672"     # AMQP
+      - "15672:15672"   # Management UI（cardiology/cardiology）
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - cardiology-net
+
 networks:
   cardiology-net:
     name: cardiology-net
@@ -88,3 +110,4 @@ volumes:
   redis-data:
   nacos-data:
   nacos-logs:
+  rabbitmq-data:

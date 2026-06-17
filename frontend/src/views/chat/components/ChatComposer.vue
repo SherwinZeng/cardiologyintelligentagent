@@ -21,6 +21,9 @@ const { t } = useI18n()
 /** 输入框双向绑定的草稿内容 */
 const draft = ref(props.initialValue ?? '')
 
+/** 中文等 IME 组字中；此期间 Enter 用于上屏，不能触发发送 */
+const isComposing = ref(false)
+
 /** 路由 query 变化时同步到输入框（如从首页带 message 进入） */
 watch(
   () => props.initialValue,
@@ -46,6 +49,15 @@ function handleSend() {
   emit('send', text)
   draft.value = ''
 }
+
+function handleEnterKeydown(event: KeyboardEvent) {
+  // IME 组字中（含中文输入法下用 Enter 确认英文/拼音）不发送
+  if (event.isComposing || isComposing.value || event.keyCode === 229) {
+    return
+  }
+  event.preventDefault()
+  handleSend()
+}
 </script>
 
 <template>
@@ -66,7 +78,9 @@ function handleSend() {
         class="chat-composer__input"
         type="text"
         :placeholder="t('chat.input')"
-        @keydown.enter.prevent="handleSend"
+        @compositionstart="isComposing = true"
+        @compositionend="isComposing = false"
+        @keydown.enter="handleEnterKeydown"
       />
       <el-button
         type="primary"

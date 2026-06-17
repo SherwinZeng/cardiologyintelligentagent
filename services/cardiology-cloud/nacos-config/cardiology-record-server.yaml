@@ -1,0 +1,52 @@
+spring:
+  main:
+    web-application-type: none
+    keep-alive: true
+
+  rabbitmq:
+    host: 127.0.0.1
+    port: 5672
+    username: cardiology
+    password: cardiology
+    virtual-host: /
+    listener:
+      simple:
+        acknowledge-mode: manual
+        prefetch: 10
+
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://127.0.0.1:3306/cardiology?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    username: cardiology
+    password: cardiology
+
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
+
+mybatis-plus:
+  mapper-locations: classpath:mapper/*.xml
+
+cardiology:
+  ai-agent:
+    base-url: http://127.0.0.1:8000/api/cardiology/
+
+  session-lifecycle:
+    inactive-days: 15
+    purge-days: 7
+    archive-batch-size: 100
+    purge-batch-size: 100
+    archive-cron: "0 0 2 * * ?"
+    purge-cron: "0 30 2 * * ?"
+
+  mq:
+    enabled: true
+    session-index:
+      exchange: cardiology.session.exchange
+      queue: cardiology.session.index.queue
+      routing-key: session.index.updated
+    session-lifecycle:
+      exchange: cardiology.session.exchange
+      queue: cardiology.session.lifecycle.queue
+      routing-key: session.lifecycle.archived

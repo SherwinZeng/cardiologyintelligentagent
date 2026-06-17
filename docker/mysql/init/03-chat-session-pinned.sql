@@ -1,5 +1,0 @@
-USE cardiology;
-
-ALTER TABLE chat_session
-  ADD COLUMN pinned TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否置顶',
-  ADD COLUMN pinned_at DATETIME DEFAULT NULL COMMENT '置顶时间';

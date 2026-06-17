@@ -10,6 +10,7 @@
 [![LangChain](https://img.shields.io/badge/LangChain-1.3-1C3C3C?logo=langchain&logoColor=white)](https://www.langchain.com/)
 [![LangGraph](https://img.shields.io/badge/LangGraph-1.2-1C3C3C)](https://langchain-ai.github.io/langgraph/)
 [![DeepSeek](https://img.shields.io/badge/DeepSeek-V4_Flash-1C3C3C)](https://www.deepseek.com/)
+[![Qwen](https://img.shields.io/badge/Qwen-3.7_Plus-615EFF)](https://tongyi.aliyun.com/)
 [![Poetry](https://img.shields.io/badge/Poetry-依赖管理-60A5FA?logo=poetry&logoColor=white)](https://python-poetry.org/)
 [![Redis](https://img.shields.io/badge/Redis-6+-DC382D?logo=redis&logoColor=white)](https://redis.io/)
 
@@ -28,6 +29,7 @@
 **主要能力：**
 
 - 症状采集与分诊（`green` / `yellow` / `red`）
+- **用药咨询**（CCB / ARB 等，独立 `medication` 节点）
 - 既往史与危险因素询问
 - 检查 / 化验报告解读
 - 寒暄、自我介绍
@@ -43,9 +45,45 @@
 
 | 接口 | 路由 | 模型 | 状态 |
 |------|------|------|------|
-| 普通问诊 | `POST /general-understanding/` | LangGraph + DeepSeek Flash | ✅ |
-| 深度推理 | `POST /reasoning/` | DeepSeek Pro | 📋 |
-| 多模态 | `POST /multimodal/` | 通义千问 3.7 | 📋 |
+| 普通问诊 | `POST /general-understanding/` | LangGraph + **DeepSeek V4 Flash** | ✅ |
+| 深度推理 | `POST /reasoning/` | **DeepSeek Pro** | 📋 |
+| 多模态 | `POST /multimodal/` | **通义千问 Qwen 3.7 Plus** | 📋 |
+
+### 多模态覆盖（规划 · Qwen）
+
+| 模态 | 示例输入 | 说明 |
+|------|----------|------|
+| ECG | 静态心电图、截图 | 心律、ST 段等辅助解读 |
+| Holter | 动态心电图报告 | 24h 监测摘要 |
+| CTA | 冠脉 CT、冠脉 CTA | 钙化积分、狭窄描述辅助 |
+| 心脏彩超 | 超声报告 / 图像 | 结构、EF 等指标摘要 |
+| 化验 / 报告 | PDF、检验单照片 | 与 `lab` 节点联动 |
+
+---
+
+## 模型路由
+
+```mermaid
+flowchart LR
+    REQ["Java Feign 请求"]
+    ROUTE{"路由"}
+    LG["LangGraph<br/>general-understanding"]
+    REASON["reasoning"]
+    MULTI["multimodal"]
+    DS_FLASH["DeepSeek V4 Flash ✅"]
+    DS_PRO["DeepSeek Pro 📋"]
+    QW["Qwen 3.7 Plus 📋"]
+
+    REQ --> ROUTE
+    ROUTE -->|文本问诊| LG --> DS_FLASH
+    ROUTE -->|深度推理| REASON --> DS_PRO
+    ROUTE -->|影像/PDF| MULTI --> QW
+
+    style DS_PRO fill:#fff,stroke-dasharray: 5 5
+    style QW fill:#fff,stroke-dasharray: 5 5
+    style MULTI fill:#fff,stroke-dasharray: 5 5
+    style REASON fill:#fff,stroke-dasharray: 5 5
+```
 
 ---
 
@@ -55,7 +93,7 @@
 |------|------|
 | Web | Django 6.0 · DRF |
 | Agent | LangGraph · LangChain |
-| LLM | DeepSeek V4 Flash |
+| LLM | **DeepSeek V4 Flash**（文本）· **DeepSeek Pro**（推理，规划）· **通义千问 Qwen 3.7 Plus**（多模态，规划） |
 | Checkpoint | InMemorySaver（开发环境） |
 | 鉴权 | Redis 内部 token |
 | 包管理 | Poetry |
@@ -69,6 +107,7 @@ flowchart TD
     START --> dispatch[clinical_dispatch_node]
     dispatch -->|symptom| symptom[symptom_collection_node]
     dispatch -->|history| history[medical_history_inquiry_node]
+    dispatch -->|medication| medication[medication_consultation_node]
     dispatch -->|lab| lab[lab_report_interpret_node]
     dispatch -->|greeting| greeting[greeting_response_node]
     dispatch -->|fallback| fallback[medical_fallback_response_node]
@@ -76,6 +115,7 @@ flowchart TD
     risk --> referral[physician_referral_node]
     symptom --> END
     history --> END
+    medication --> END
     greeting --> END
     referral --> END
     fallback --> END
@@ -86,10 +126,27 @@ flowchart TD
 | 输入示例 | 路由 | 说明 |
 |----------|------|------|
 | 我胸口疼 | `symptom` | 症状采集 |
+| CCB 和 ARB 区别 / 我想知道 arb | `medication` | 用药科普 |
 | 我有高血压 | `history` | 既往史 |
 | 帮我看心电图 | `lab` | 报告解读 |
 | 你好 / 你是谁 | `greeting` | 寒暄 |
 | 无关话题 | `fallback` | 拒答 |
+
+**dispatch 原则（维护入口）：**
+
+1. **每轮先判显式意图**（用药 / 化验 / 症状等），再决定是否继续未完成的采集流程  
+2. **症状红旗**：固定急救模板仅在**本轮**出现红旗关键词时触发；用户说「不疼了 / 缓解了」则降级走 LLM  
+3. 铭铭答非所问、路由错误时，优先改 `prompts/dispatch.py` 关键词与 `graph/nodes/dispatch.py` 顺序，其次改各 node 内规则与 `prompts/llm/*`
+
+相关文件：
+
+```text
+cardiology_chat/prompts/dispatch.py      # 关键词表
+cardiology_chat/graph/nodes/dispatch.py  # 路由顺序
+cardiology_chat/graph/nodes/symptom.py   # 红旗 / 缓解词
+cardiology_chat/graph/nodes/medication.py
+cardiology_chat/prompts/symptom.py       # RED_FLAG / SYMPTOM_RESOLVED 词表
+```
 
 ---
 
@@ -247,12 +304,13 @@ Python → 校验后删除
 | 功能 | 状态 |
 |------|------|
 | LangGraph 分流节点 | ✅ |
+| 用药咨询节点（medication） | ✅ |
 | 多轮 session | ✅ |
 | 内部 token 鉴权 | ✅ |
 | 寒暄 / 作者彩蛋 | ✅ |
-| 分流关键词扩展 | ✅（症状 / 元对话 / 作者相关） |
+| 分流与红旗规则调优 | ✅（dispatch 顺序、本轮红旗、缓解降级） |
 | Redis Checkpoint | 📋 |
-| reasoning / multimodal | 📋 |
+| reasoning / multimodal（ECG · CTA · 彩超） | 📋 |
 | SSE 流式 | 📋 |
 
 ---

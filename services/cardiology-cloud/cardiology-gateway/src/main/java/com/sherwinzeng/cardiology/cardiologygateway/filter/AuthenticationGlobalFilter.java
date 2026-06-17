@@ -3,6 +3,7 @@ package com.sherwinzeng.cardiology.cardiologygateway.filter;
 import com.sherwinzeng.cardiology.cardiologygateway.properties.AuthGuestProperties;
 import com.sherwinzeng.cardiology.cardiologygateway.properties.AuthenticationProperties;
 import com.sherwinzeng.cardiology.cardiologygateway.support.GatewayResponseWriter;
+import com.sherwinzeng.cardiology.cardiologycloudcommonutils.auth.AuthHeaders;
 import com.sherwinzeng.cardiology.cardiologycloudcommonutils.auth.AuthUserType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,14 +28,22 @@ import java.util.List;
 /**
  * 网关全局鉴权过滤器。
  * <p>
- * 职责：在请求进入下游微服务之前，按用户类型完成鉴权，并将 userId 透传给下游。
+ * 职责：在请求进入下游微服务之前，按用户类型完成鉴权，并将 {@code userId}、{@code userType}
+ * 写入请求头透传给下游，避免各微服务重复解析 JWT。
  * <p>
- * 校验策略（由 JWT 中的 {@code userType} 决定）：
+ * 校验策略（由 JWT claim {@link AuthUserType#CLAIM_NAME} 决定）：
  * <ul>
- *   <li>{@code guest} 游客：JWT 校验 + Redis 会话校验（单点登录、踢下线）</li>
- *   <li>{@code formal} 正式用户：仅 JWT 校验（签名 + 过期时间）</li>
- *   <li>未携带 userType 的旧 token：按游客处理，需重新登录以获取带类型的 token</li>
+ *   <li>{@link AuthUserType#GUEST} 游客：JWT 校验 + Redis 会话校验（单点登录、踢下线）</li>
+ *   <li>{@link AuthUserType#FORMAL} 正式用户：仅 JWT 校验（签名 + 过期时间）</li>
+ *   <li>未携带 userType 的旧 token：按游客处理，透传 {@code guest}，需重新登录以获取带类型的 token</li>
  * </ul>
+ * <p>
+ * 鉴权通过后写入下游请求头（常量见 {@link AuthHeaders}）：
+ * <ul>
+ *   <li>{@link AuthHeaders#USER_ID}：JWT 中的 {@code userId}</li>
+ *   <li>{@link AuthHeaders#USER_TYPE}：{@code guest} 或 {@code formal}，与鉴权分支一致</li>
+ * </ul>
+ * 下游示例：{@code request.getHeader(AuthHeaders.USER_TYPE)}
  * <p>
  * 鉴权失败时直接返回统一 JSON（HTTP 403，body 格式与业务服务 {@code BaseResponse} 一致），
  * 不抛异常、不走下游，方便前端统一处理。
@@ -62,12 +71,6 @@ public class AuthenticationGlobalFilter implements GlobalFilter, Ordered {
 
     /** Authorization 请求头中 Bearer 前缀，格式：Bearer &lt;token&gt; */
     private static final String BEARER_PREFIX = "Bearer ";
-
-    /**
-     * 鉴权通过后写入请求头，供下游 session 等服务直接读取，避免重复解析 JWT。
-     * 下游可通过 request.getHeader("X-User-Id") 获取当前用户 ID。
-     */
-    private static final String USER_ID_HEADER = "X-User-Id";
 
     /** 白名单路径配置，对应 Nacos：cardiology.auth.exclude-paths */
     private final AuthenticationProperties authenticationProperties;
@@ -127,8 +130,8 @@ public class AuthenticationGlobalFilter implements GlobalFilter, Ordered {
     /**
      * JWT 解码通过后，按 userType 分支校验并转发。
      * <p>
-     * 正式用户（{@code userType=formal}）只信任 JWT，不查 Redis；
-     * 游客（{@code userType=guest}）或未带类型的旧 token，额外校验 Redis 会话。
+     * 正式用户（{@link AuthUserType#FORMAL}）只信任 JWT，不查 Redis，透传 {@code formal}；
+     * 游客（{@link AuthUserType#GUEST}）或未带类型的旧 token，额外校验 Redis 会话，透传 {@code guest}。
      */
     private Mono<Void> validateAndForward(ServerWebExchange exchange,
                                           GatewayFilterChain chain,
@@ -146,7 +149,7 @@ public class AuthenticationGlobalFilter implements GlobalFilter, Ordered {
         String userType = jwt.getClaimAsString(AuthUserType.CLAIM_NAME);
         if (AuthUserType.FORMAL.equals(userType)) {
             log.debug("正式用户，仅校验 JWT，userId={}，path={}", userId, path);
-            return forward(exchange, chain, request, userId, path, method);
+            return forward(exchange, chain, request, userId, AuthUserType.FORMAL, path, method);
         }
 
         log.debug("游客用户，校验 JWT + Redis 会话，userId={}，userType={}，path={}", userId, userType, path);
@@ -154,8 +157,10 @@ public class AuthenticationGlobalFilter implements GlobalFilter, Ordered {
     }
 
     /**
-     * 游客 Redis 会话校验。
-     * Redis key 规则与 cardiology-auth 的 {@code GuestLoginServiceImpl} 一致。
+     * 游客 Redis 会话校验，通过后透传 {@link AuthHeaders#USER_TYPE} = {@link AuthUserType#GUEST}。
+     * <p>
+     * Redis key 规则与 cardiology-auth 的 {@code GuestLoginServiceImpl} 一致：
+     * {@code auth.guest.key + userId}。
      */
     private Mono<Void> validateGuestSessionAndForward(ServerWebExchange exchange,
                                                       GatewayFilterChain chain,
@@ -183,20 +188,26 @@ public class AuthenticationGlobalFilter implements GlobalFilter, Ordered {
                         log.warn("鉴权失败：Redis 会话 token 不匹配，userId={}，path={}", userId, path);
                         return forbidden(exchange, "账号已在其他设备登录，请重新登录");
                     }
-                    return forward(exchange, chain, request, userId, path, method);
+                    return forward(exchange, chain, request, userId, AuthUserType.GUEST, path, method);
                 });
     }
 
-    /** 鉴权通过，透传 userId 并转发下游 */
+    /**
+     * 鉴权通过，写入 {@link AuthHeaders#USER_ID}、{@link AuthHeaders#USER_TYPE} 并转发下游。
+     *
+     * @param userType {@link AuthUserType#GUEST} 或 {@link AuthUserType#FORMAL}
+     */
     private Mono<Void> forward(ServerWebExchange exchange,
                                GatewayFilterChain chain,
                                ServerHttpRequest request,
                                String userId,
+                               String userType,
                                String path,
                                String method) {
-        log.info("鉴权通过，userId={}，path={}，method={}", userId, path, method);
+        log.info("鉴权通过，userId={}，userType={}，path={}，method={}", userId, userType, path, method);
         ServerHttpRequest mutated = request.mutate()
-                .header(USER_ID_HEADER, userId)
+                .header(AuthHeaders.USER_ID, userId)
+                .header(AuthHeaders.USER_TYPE, userType)
                 .build();
         return chain.filter(exchange.mutate().request(mutated).build());
     }

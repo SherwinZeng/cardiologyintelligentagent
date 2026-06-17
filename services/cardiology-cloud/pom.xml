@@ -11,8 +11,10 @@
 
     <modules>
         <module>cardiology-cloud-common</module>
+        <module>cardiology-gateway</module>
         <module>cardiology-session</module>
         <module>cardiology-auth</module>
+        <module>cardiology-record</module>
     </modules>
 
     <properties>
@@ -85,6 +87,11 @@
                 <version>${mybatis.plus.version}</version>
             </dependency>
             <dependency>
+                <groupId>com.baomidou</groupId>
+                <artifactId>mybatis-plus-annotation</artifactId>
+                <version>${mybatis.plus.version}</version>
+            </dependency>
+            <dependency>
                 <groupId>com.sherwinzeng.cardiology</groupId>
                 <artifactId>cardiology-cloud-common-infra</artifactId>
                 <version>${common.version}</version>
@@ -108,6 +115,22 @@
     </dependencyManagement>
 
     <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-maven-plugin</artifactId>
+                    <version>${spring.boot.version}</version>
+                    <executions>
+                        <execution>
+                            <goals>
+                                <goal>repackage</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+            </plugins>
+        </pluginManagement>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -116,10 +139,6 @@
                     <source>${java.version}</source>
                     <target>${java.version}</target>
                 </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
         </plugins>
     </build>

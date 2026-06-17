@@ -1,8 +1,28 @@
 # 云服务器生产环境一键编排
 # 启动: docker compose -f docker-compose.prod.yaml --env-file deploy/.env up -d --build
 # 停止: docker compose -f docker-compose.prod.yaml --env-file deploy/.env down
+#
+# Java 服务统一 SPRING_PROFILES_ACTIVE=docker → application-docker.yml
+# 生产栈默认启动 Nacos；Java 注册到 Nacos，网关 lb:// 服务发现
 
 name: cardiology-prod
+
+x-java-docker-env: &java_docker_env
+  SPRING_PROFILES_ACTIVE: docker
+  SPRING_CLOUD_NACOS_SERVER_ADDR: nacos:8848
+  SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR: nacos:8848
+  SPRING_CLOUD_NACOS_CONFIG_ENABLED: 'false'
+  SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
+  SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
+  JWT_SIGN_KEY: ${JWT_SIGN_KEY}
+  SPRING_DATA_REDIS_HOST: redis
+  SPRING_DATA_REDIS_PORT: 6379
+  SPRING_RABBITMQ_HOST: rabbitmq
+  SPRING_RABBITMQ_PORT: 5672
+  SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER}
+  SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+  # 注册到 Docker 网桥 IP，避免误选 127.0.0.1
+  SPRING_CLOUD_INETUTILS_PREFERRED_NETWORKS: 172.
 
 services:
   mysql:
@@ -65,7 +85,7 @@ services:
       JVM_XMS: 256m
       JVM_XMX: 512m
       NACOS_AUTH_ENABLE: 'false'
-      NACOS_AUTH_TOKEN: 'VGhpc0lzTXlDdXN0b21TZWNyZXRLZXkwMTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5'
+      NACOS_AUTH_TOKEN: 'VGhpc0lzTXlDdXN0b21TZWNyZXRLZXkwMTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5'
       NACOS_AUTH_IDENTITY_KEY: serverIdentity
       NACOS_AUTH_IDENTITY_VALUE: security
       TZ: Asia/Shanghai
@@ -73,11 +93,30 @@ services:
       - nacos-data:/home/nacos/data
       - nacos-logs:/home/nacos/logs
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://127.0.0.1:8080/next/']
+      test: ['CMD-SHELL', 'curl -sf http://127.0.0.1:8848/nacos/ || exit 1']
       interval: 15s
       timeout: 5s
-      retries: 12
-      start_period: 60s
+      retries: 20
+      start_period: 120s
+    networks:
+      - cardiology-net
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: cardiology-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+      TZ: Asia/Shanghai
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ['CMD', 'rabbitmq-diagnostics', '-q', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
     networks:
       - cardiology-net
 
@@ -104,24 +143,22 @@ services:
     networks:
       - cardiology-net
 
-  cardiology-session:
+  cardiology-auth:
     build:
       context: ./services/cardiology-cloud
-    container_name: cardiology-session
+      args:
+        APP_MODULE: cardiology-auth
+        APP_PORT: 30002
+    container_name: cardiology-auth
     restart: unless-stopped
     environment:
-      SPRING_CLOUD_NACOS_SERVER_ADDR: nacos:8848
-      SPRING_CLOUD_NACOS_CONFIG_SERVER_ADDR: nacos:8848
-      SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR: nacos:8848
-      SPRING_CLOUD_NACOS_USERNAME: ${NACOS_USERNAME}
-      SPRING_CLOUD_NACOS_PASSWORD: ${NACOS_PASSWORD}
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
-      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
-      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
-      SPRING_DATA_REDIS_HOST: redis
-      SPRING_DATA_REDIS_PORT: 6379
-      CARDIOLOGY_AI_AGENT_BASE_URL: http://ai-agent:8000/api/cardiology/
-      SERVER_PORT: 30001
+      <<: *java_docker_env
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/cardiology-auth?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+      SERVER_PORT: 30002
+      ALIYUN_ACCESS_KEY_ID: ${ALIYUN_ACCESS_KEY_ID}
+      ALIYUN_ACCESS_KEY_SECRET: ${ALIYUN_ACCESS_KEY_SECRET}
+      AUTH_SMS_SIGN_NAME: ${AUTH_SMS_SIGN_NAME:-速通互联验证码}
+      AUTH_SMS_TEMPLATE_CODE: ${AUTH_SMS_TEMPLATE_CODE:-100001}
     depends_on:
       mysql:
         condition: service_healthy
@@ -129,7 +166,77 @@ services:
         condition: service_healthy
       nacos:
         condition: service_healthy
+    networks:
+      - cardiology-net
+
+  cardiology-session:
+    build:
+      context: ./services/cardiology-cloud
+      args:
+        APP_MODULE: cardiology-session
+        APP_PORT: 30001
+    container_name: cardiology-session
+    restart: unless-stopped
+    environment:
+      <<: *java_docker_env
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+      SERVER_PORT: 30001
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      nacos:
+        condition: service_healthy
       ai-agent:
+        condition: service_started
+    networks:
+      - cardiology-net
+
+  cardiology-record:
+    build:
+      context: ./services/cardiology-cloud
+      args:
+        APP_MODULE: cardiology-record
+        APP_PORT: 8080
+    container_name: cardiology-record
+    restart: unless-stopped
+    environment:
+      <<: *java_docker_env
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      nacos:
+        condition: service_healthy
+    networks:
+      - cardiology-net
+
+  cardiology-gateway:
+    build:
+      context: ./services/cardiology-cloud
+      args:
+        APP_MODULE: cardiology-gateway
+        APP_PORT: 30000
+    container_name: cardiology-gateway
+    restart: unless-stopped
+    environment:
+      <<: *java_docker_env
+      SERVER_PORT: 30000
+    depends_on:
+      nacos:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      cardiology-auth:
+        condition: service_started
+      cardiology-session:
         condition: service_started
     networks:
       - cardiology-net
@@ -139,12 +246,13 @@ services:
       context: ./frontend
       args:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
+        VITE_AUTH_API_BASE_URL: ${VITE_AUTH_API_BASE_URL:-/api}
     container_name: cardiology-frontend
     restart: unless-stopped
     ports:
       - '${FRONTEND_HTTP_PORT:-80}:80'
     depends_on:
-      - cardiology-session
+      - cardiology-gateway
     networks:
       - cardiology-net
 
@@ -157,3 +265,4 @@ volumes:
   redis-data:
   nacos-data:
   nacos-logs:
+  rabbitmq-data:

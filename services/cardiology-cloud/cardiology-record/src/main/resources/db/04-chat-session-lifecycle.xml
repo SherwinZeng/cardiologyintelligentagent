@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  formal 会话生命周期 DDL（手动执行或导入运维平台）。
+  docker 首次初始化见：docker/mysql/init/04-chat-session-lifecycle.sql
+-->
+<databaseScript id="04-chat-session-lifecycle" description="chat_session 归档字段与索引">
+    <statement order="1"><![CDATA[
+ALTER TABLE chat_session
+  ADD COLUMN archived_at DATETIME DEFAULT NULL COMMENT '归档时间';
+    ]]></statement>
+    <statement order="2"><![CDATA[
+CREATE INDEX idx_chat_session_status_updated_at ON chat_session (status, updated_at);
+    ]]></statement>
+    <statement order="3"><![CDATA[
+CREATE INDEX idx_chat_session_status_archived_at ON chat_session (status, archived_at);
+    ]]></statement>
+</databaseScript>

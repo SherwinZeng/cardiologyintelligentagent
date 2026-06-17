@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.sherwinzeng.cardiology.cardiologysession.repository.ChatSessionMapper">
+
+    <sql id="chatSessionColumns">
+        session_id,
+        uid,
+        title,
+        preview,
+        message_count,
+        status,
+        pinned,
+        pinned_at,
+        created_at,
+        updated_at,
+        archived_at
+    </sql>
+
+    <select id="selectActivePage" resultType="com.sherwinzeng.cardiology.cardiologysession.entity.ChatSession">
+        SELECT
+        <include refid="chatSessionColumns"/>
+        FROM chat_session
+        WHERE uid = #{uid}
+          AND status = 'active'
+        <if test="keyword != null and keyword != ''">
+            AND (
+                title LIKE CONCAT('%', #{keyword}, '%')
+                OR preview LIKE CONCAT('%', #{keyword}, '%')
+            )
+        </if>
+        ORDER BY pinned DESC, pinned_at DESC, updated_at DESC
+    </select>
+
+</mapper>

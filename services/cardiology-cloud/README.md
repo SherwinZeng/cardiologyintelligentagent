@@ -30,15 +30,20 @@
 |------|------|------|
 | **cardiology-gateway** | `30000` | 统一入口、JWT 鉴权、路由转发 |
 | **cardiology-auth** | `30002` | 游客 / 短信登录、JWT 签发、用户表 |
-| **cardiology-session** | `30001` | 问诊 API、会话创建、消息历史、Feign 调 AI |
+| **cardiology-session** | `30001` | 问诊 API、会话管理、**MQ 更新会话索引**、Feign 调 AI |
+| **cardiology-record** | —（无 HTTP） | formal 会话生命周期 Worker（归档 / 清理）；问诊总结（规划中） |
 
 **主要职责：**
 
 - 对外 REST API（经网关统一暴露）
 - OpenFeign 调用 Python `ai-agent`
 - Redis 内部 token 鉴权（Java → Python）
-- 网关 JWT 鉴权与 `X-User-Id` 透传
-- MyBatis-Plus 持久化聊天消息与会话
+- 网关 JWT 鉴权与 `X-User-Id`、`X-User-Type` 透传
+- **游客 / 正式用户分流**：同一套 `/chat/**` API，session 内按 `X-User-Type` 路由
+- MyBatis-Plus 持久化**正式用户**聊天消息与会话
+- **游客**会话与消息存 Redis（Lua 原子判限），不写 MySQL、不走 session-index MQ
+- **RabbitMQ**：正式用户问诊 commit 后异步更新 `chat_session`（preview / message_count）
+- **formal 会话生命周期**：record 定时归档（15 天无活跃）→ 清理（归档满 7 天）；session 侧列表只查 `active`、归档会话禁止继续问诊
 
 ---
 
@@ -56,6 +61,7 @@
 | ORM | MyBatis-Plus | 3.5.7 |
 | 数据库 | MySQL | 8.0.33 |
 | 缓存 | Redis | — |
+| 消息队列 | RabbitMQ | 3.13（Compose） |
 
 ---
 
@@ -67,47 +73,135 @@ cardiology-cloud/
 ├── nacos-config/
 │   ├── cardiology-gateway-server.yaml
 │   ├── cardiology-auth-server.yaml
-│   └── cardiology-session-server.yaml
+│   ├── cardiology-session-server.yaml
+│   └── cardiology-record-server.yaml
 ├── cardiology-cloud-common/
-│   ├── cardiology-cloud-common-data/      # 全局异常、统一响应
-│   ├── cardiology-cloud-common-infra/     # Redis 配置
-│   └── cardiology-cloud-common-utils/     # 工具类、AuthUserType
+│   ├── cardiology-cloud-common-data/      # 统一响应、全局异常、ChatSession/Message 公共实体
+│   ├── cardiology-cloud-common-infra/     # Redis + RabbitMQ 自动配置、MQ 事件 DTO
+│   └── cardiology-cloud-common-utils/     # 工具类、AuthUserType、AuthHeaders
 ├── cardiology-gateway/                    # 网关 ✅
 │   ├── filter/AuthenticationGlobalFilter
 │   └── config/JwtConfig
-├── cardiology-auth/                         # 认证服务 ✅
-└── cardiology-session/                    # 会话服务 ✅
-    ├── controller/
-    ├── services/
-    ├── repository/
-    ├── entity/
-    └── feign/
+├── cardiology-auth/                       # 认证服务 ✅
+├── cardiology-session/                    # 会话服务 ✅
+│   ├── controller/
+│   ├── services/                          # 按 userType 分流 guest / formal
+│   ├── store/GuestChatSessionStore        # 游客 Redis + Lua
+│   ├── resources/lua/                     # guest_create_session / guest_append_user_message
+│   ├── resources/mapper/                  # ChatSessionMapper.xml（列表只查 active）
+│   ├── repository/
+│   ├── entity/                            # 继承 common-data 实体父类
+│   └── feign/
+└── cardiology-record/                     # 记录 Worker ✅（无 Controller）
+    ├── worker/SessionLifecycleWorker      # 归档 Job + 清理 Job + lifecycle MQ 监听
+    ├── resources/mapper/                  # 生命周期 SQL（MyBatis XML）
+    ├── resources/db/                      # DDL 脚本（04-chat-session-lifecycle.xml）
+    └── properties/SessionLifecycleProperties
 ```
 
 ---
 
 ## 架构
 
+### 六层位置（Java 在 ②③⑤ 层）
+
+```mermaid
+flowchart TB
+    subgraph L1["① 展示层"]
+        FE["frontend"]
+    end
+
+    subgraph L2["② 接入层"]
+        GW["cardiology-gateway :30000"]
+    end
+
+    subgraph L3["③ 业务层 · Java"]
+        direction LR
+        AUTH["auth :30002"]
+        SESS["session :30001"]
+        REC["record Worker ✅"]
+    end
+
+    subgraph L4["④ AI 层"]
+        AG["ai-agent :8000 · DRF"]
+    end
+
+    subgraph L5["⑤ 数据层"]
+        direction LR
+        REDIS[("Redis")]
+        DBA[("cardiology-auth DB")]
+        DBC[("cardiology DB")]
+        MQ["RabbitMQ"]
+    end
+
+    FE ==> GW
+    GW ==> AUTH
+    GW ==> SESS
+    SESS ==> AG
+    AUTH --> REDIS
+    AUTH --> DBA
+    SESS --> REDIS
+    SESS --> DBC
+    SESS --> MQ
+    REC --> DBC
+    REC --> MQ
+
+    style L1 fill:#e8f4fc,stroke:#1890ff
+    style L2 fill:#fff7e6,stroke:#fa8c16
+    style L3 fill:#f6ffed,stroke:#52c41a
+    style L4 fill:#f9f0ff,stroke:#722ed1
+    style L5 fill:#fafafa,stroke:#595959
+```
+
+### 单次问诊时序（按层 · guest / formal）
+
 ```mermaid
 sequenceDiagram
-    participant C as 客户端
-    participant G as cardiology-gateway
-    participant R as Redis
-    participant S as cardiology-session
-    participant M as MySQL
-    participant A as ai-agent
+    autonumber
+    box rgba(232,244,252,1) ① 展示层
+        participant C as Browser
+    end
+    box rgba(255,247,230,1) ② 接入层
+        participant G as gateway
+    end
+    box rgba(246,255,237,1) ③ 业务层
+        participant S as session
+        participant DB as MySQL / Redis
+        participant Q as RabbitMQ
+    end
+    box rgba(249,240,255,1) ④ AI 层
+        participant A as ai-agent DRF
+        participant L as DeepSeek Flash
+    end
 
-    C->>G: POST /chat/generalUnderstanding/v1 + Bearer JWT
-    G->>G: JWT 校验 + 游客 Redis 会话校验
-    G->>S: 转发 + X-User-Id
-    S->>R: 写入 internal:token
-    S->>M: 保存 user 消息
+    C->>G: POST /chat/generalUnderstanding/v1 + JWT
+    G->>G: JWT（guest 额外校验 Redis 登录态）
+    G->>S: X-User-Id + X-User-Type
+
+    alt guest
+        S->>DB: Lua 判 30 问 · 写 user 消息 Redis
+    else formal
+        S->>DB: COUNT user · 写 chat_message
+    end
+
     S->>A: Feign + X-Internal-Token
-    A-->>S: JSON 响应
-    S->>M: 保存 assistant 消息
-    S-->>G: 返回结果
-    G-->>C: 返回结果
+    A->>L: LangGraph 推理
+    L-->>A: 结构化回复
+    A-->>S: urgency / advice / ...
+
+    alt guest
+        S->>DB: 写 assistant · 更新 preview Redis
+    else formal
+        S->>DB: 写 assistant
+        S->>Q: MessageRoundCompletedEvent
+        Q->>S: 更新 chat_session 索引
+    end
+
+    S-->>C: BaseResponse
 ```
+
+> 前端**无需**传 `X-User-Type`；仅 JWT 经 `:30000` 即可。  
+> **多模态**（规划）：上传 ECG / CTA / 彩超 → **阿里云 OSS** → ai-agent `/multimodal/` → **Qwen 3.7**，详见 [根 README · 全景架构](../../README.md#全景架构完整版)。
 
 ### 网关鉴权策略
 
@@ -115,9 +209,40 @@ sequenceDiagram
 |----------|----------|
 | `guest` 游客 | JWT 签名 + Redis 会话（单点登录、踢下线） |
 | `formal` 正式用户 | JWT 签名 + 过期时间 |
-| 白名单 | `/auth/guest/login/**` 免鉴权 |
+| 白名单 | `/auth/guest/login/**` 等免鉴权 |
 
-鉴权通过后，网关将 `userId` 写入请求头 `X-User-Id` 供下游使用。
+鉴权通过后，网关向下游写入：
+
+| 请求头 | 说明 |
+|--------|------|
+| `X-User-Id` | JWT 中的 `userId` |
+| `X-User-Type` | `guest` 或 `formal` |
+
+下游常量见 `AuthHeaders`（common-utils）。
+
+### 游客 / 正式能力对照
+
+| 能力 | 游客（Redis） | 正式用户（MySQL） |
+|------|---------------|-------------------|
+| 创建 / 列表 / 删除会话 | ✅ Lua + Redis | ✅ MySQL |
+| 问诊聊天 | ✅ Redis | ✅ MySQL |
+| 历史消息 | ✅ Redis LIST | ✅ `chat_message` |
+| 置顶 | ❌ 返回业务错误 | ✅ |
+| session-index MQ | ❌ | ✅ |
+| 最多 session 数 | **5**（满了拒绝创建） | 暂未限制（规划同步） |
+| 每 session 最多问题 | **30 条 user 消息**（Lua / COUNT） | **30 条 user 消息** |
+| 数据 TTL | **3600s**（与 `auth.guest.time` 一致，读写续期） | 长期 |
+
+### 游客 Redis Key
+
+```text
+cardiology:guest:session:{uid}                 # 登录态（auth 写入）
+cardiology:guest:chat:{uid}:index              # ZSET，session 列表
+cardiology:guest:chat:{uid}:s:{sessionId}      # HASH，meta（含 userMessageCount）
+cardiology:guest:chat:{uid}:s:{sessionId}:msgs # LIST，JSON 消息
+```
+
+Lua 脚本：`resources/lua/guest_create_session.lua`、`guest_append_user_message.lua`。
 
 ---
 
@@ -126,14 +251,58 @@ sequenceDiagram
 ### 环境
 
 - JDK 17、Maven 3.9+
-- MySQL 8、Redis、Nacos
+- MySQL 8、Redis、**RabbitMQ**、Nacos
 - Python `ai-agent` 已启动（`:8000`）
 
 ### 配置
 
-将 `nacos-config/` 下三个 YAML 导入 Nacos。网关 `jwt.sign-key` 须与 auth 服务一致。
+将 `nacos-config/` 下 YAML 导入 Nacos（**local** profile）。网关 `jwt.sign-key` 须与 auth 一致。
 
-`cardiology-session` 核心配置示例：
+**Docker 生产**（profile `docker`）不依赖 Nacos Config；路由在 `application-docker.yml`，密钥与短信 AK/SK 在 [`deploy/.env`](../../deploy/.env.example)。
+
+**RabbitMQ 拓扑（同一 Exchange，两个 Queue，由 common-infra 在 `cardiology.mq.enabled=true` 时声明）：**
+
+| 业务 | Exchange | Queue | Routing Key | 生产者 | 消费者 |
+|------|----------|-------|-------------|--------|--------|
+| session-index | `cardiology.session.exchange` | `cardiology.session.index.queue` | `session.index.updated` | session | session |
+| session-lifecycle（formal 归档） | 同上 | `cardiology.session.lifecycle.queue` | `session.lifecycle.archived` | record（你实现） | record（你实现） |
+
+消息体：`MessageRoundCompletedEvent` / `SessionLifecycleArchivedEvent`（common-infra）。
+
+`cardiology-session-server.yaml` 核心片段：
+
+```yaml
+spring:
+  rabbitmq:
+    host: 127.0.0.1
+    port: 5672
+    username: cardiology
+    password: cardiology
+
+cardiology:
+  guest:
+    chat:
+      key-prefix: "cardiology:guest:chat:"
+      ttl-seconds: 3600
+      max-sessions: 5
+      max-user-messages: 30
+  mq:
+    enabled: true
+    session-index:
+      exchange: cardiology.session.exchange
+      queue: cardiology.session.index.queue
+      routing-key: session.index.updated
+    session-lifecycle:
+      exchange: cardiology.session.exchange
+      queue: cardiology.session.lifecycle.queue
+      routing-key: session.lifecycle.archived
+  ai-agent:
+    base-url: http://127.0.0.1:8000/api/cardiology/
+```
+
+`cardiology-record-server.yaml`：`cardiology.mq.enabled: true`；**只消费** `session-lifecycle` 队列（不监听 session-index）。
+
+`cardiology-session` 数据源等配置示例：
 
 ```yaml
 server:
@@ -160,10 +329,13 @@ cardiology:
 # 1. 认证服务
 cd cardiology-auth && mvn spring-boot:run
 
-# 2. 会话服务（另开终端）
+# 2. 会话服务（另开终端；需 RabbitMQ）
 cd cardiology-session && mvn spring-boot:run
 
-# 3. 网关（另开终端；依赖 auth / session 已注册 Nacos）
+# 3. 记录 Worker（可选，另开终端）
+cd cardiology-record && mvn spring-boot:run
+
+# 4. 网关（另开终端）
 cd cardiology-gateway && mvn spring-boot:run
 ```
 
@@ -191,11 +363,11 @@ mvn clean package -pl cardiology-gateway -am
 
 ```json
 {
-  "guestId": "guest-demo-001"
+  "id": "guest-demo-001"
 }
 ```
 
-**响应：** `data.token` 为 JWT，`data.id` 为用户 ID。
+**响应：** `data.token` 为 JWT（claim 含 `userType=guest`），`data.id` 为用户 ID。游客会话 Redis TTL 与 JWT 有效期均为 **3600s（1h）**（`auth.guest.time`）。
 
 ---
 
@@ -225,13 +397,14 @@ mvn clean package -pl cardiology-gateway -am
 
 **响应：** `data.token`、`data.id`、`data.phone` 等。
 
-> 短信能力依赖 Nacos 中 `aliyun.*` 与 `auth.sms.*` 配置（阿里云号码认证服务）。
+> **本地**：`aliyun.*` 与 `auth.sms.*` 在 Nacos `cardiology-auth-server.yaml`（阿里云 [号码认证](https://dypns.console.aliyun.com/) · `dypnsapi`）。  
+> **生产 Docker**：`deploy/.env` 中 `ALIYUN_ACCESS_KEY_ID` / `ALIYUN_ACCESS_KEY_SECRET`。
 
 ---
 
 ### POST `/chat/session/create`
 
-创建问诊会话，写入 `chat_session` 表。
+创建问诊会话。对外同一接口；**guest → Redis（Lua 限 5 个）**，**formal → MySQL**。
 
 **请求体：**
 
@@ -249,11 +422,13 @@ mvn clean package -pl cardiology-gateway -am
 
 **响应：** `data` 为 `ChatSession` 对象（含 `sessionId`、`title`、`status` 等）。
 
+**业务错误（guest）：** 已有 5 个 session → `最多 5 个对话，请先删除后再创建`。
+
 ---
 
 ### GET `/chat/session/list/v1`
 
-分页查询用户会话列表，支持关键词搜索。
+分页查询用户会话列表，支持关键词搜索。**guest 读 Redis，formal 读 MySQL**；响应结构一致。
 
 **参数：** `uid`（必填）、`page`、`pageSize`、`keyword`
 
@@ -263,7 +438,7 @@ mvn clean package -pl cardiology-gateway -am
 
 ### POST `/chat/session/pin/v1`
 
-置顶或取消置顶会话。
+置顶或取消置顶会话。**仅 formal**；guest 返回「游客不支持置顶」。
 
 **请求体：** `{ "uid": "...", "session": "...", "pinned": true }`
 
@@ -271,7 +446,7 @@ mvn clean package -pl cardiology-gateway -am
 
 ### DELETE `/chat/session/v1`
 
-删除会话及其全部消息（物理删除，级联删除 `chat_message`）。
+删除会话及其全部消息。**guest 删 Redis key；formal 物理删除 MySQL**（级联 `chat_message`）。
 
 **参数：** `uid`、`session`
 
@@ -279,7 +454,7 @@ mvn clean package -pl cardiology-gateway -am
 
 ### POST `/chat/generalUnderstanding/v1`
 
-普通医疗对话。
+普通医疗对话。**guest：Redis Lua 判 30 条 user 消息后写入；formal：MySQL COUNT 后写入**。均通过 Feign 调 ai-agent。
 
 **请求体：**
 
@@ -312,11 +487,13 @@ mvn clean package -pl cardiology-gateway -am
 }
 ```
 
+**业务错误：** 本 session user 消息已达 30 条 → `本轮对话已达 30 个问题上限`。
+
 ---
 
 ### GET `/chat/messages/v1`
 
-查询会话历史（游标分页，按时间升序返回当前页）。
+查询会话历史（游标分页，按时间升序返回当前页）。**guest 读 Redis LIST，formal 读 MySQL**。
 
 **参数：**
 
@@ -333,9 +510,9 @@ mvn clean package -pl cardiology-gateway -am
 
 ## 数据库
 
-### `chat_session`
+### `chat_session`（仅 formal）
 
-问诊会话元数据，由 `POST /chat/session/create` 创建。
+问诊会话元数据，由 `POST /chat/session/create` 写入 MySQL。列表中的 `message_count` 为 **user + assistant 合计**；30 条限制按 **user 消息** 计数。
 
 | 字段 | 说明 |
 |------|------|
@@ -348,9 +525,9 @@ mvn clean package -pl cardiology-gateway -am
 | `pinned` | 是否置顶 |
 | `pinned_at` | 置顶时间 |
 
-### `chat_message`
+### `chat_message`（仅 formal）
 
-每轮问诊写入 `user` + `assistant` 两条记录。
+每轮问诊写入 `user` + `assistant` 两条记录；**不在同步链路双写** `chat_session`，由 MQ Consumer 异步更新 `preview` / `message_count` / `updated_at`。
 
 | 字段 | 说明 |
 |------|------|
@@ -379,9 +556,14 @@ mvn clean package -pl cardiology-gateway -am
 |------|------|
 | `cardiology-gateway` | ✅ 已完成 |
 | `cardiology-auth` | ✅ 已完成（游客 + 短信） |
-| `cardiology-session` | ✅ 已完成 |
+| `cardiology-session` | ✅ 已完成（guest Redis + formal MySQL 分流、MQ 会话索引） |
+| `cardiology-record` | 🚧 Worker 骨架；`consultation_record` 总结 Job 开发中 |
 | Sentinel 限流熔断 | 📋 规划中 |
-| 挂号服务 | 📋 规划中 |
+| 挂号 Worker | 📋 RabbitMQ + 爬虫代挂（无 HIS） |
+| payment 支付 | 📋 微信/支付宝 + **Seata TCC** |
+| 阿里云 OSS | 📋 影像 / PDF 对象存储 |
+| Sentinel 限流熔断 | 📋 Gateway + Feign |
+| Seata TCC | 📋 Try-Confirm-Cancel · 支付 + 挂号任务 |
 
 ---
 
