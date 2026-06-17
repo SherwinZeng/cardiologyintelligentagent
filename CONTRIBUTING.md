@@ -98,8 +98,6 @@ yarn dev
 开发默认：前端 `http://127.0.0.1:5173`；Vite 将 `/api` 代理到网关 `:30000`；Axios 基址 `VITE_AUTH_API_BASE_URL=http://127.0.0.1:30000`。  
 登录方式：游客一键体验、手机短信验证码（需配置阿里云）；聊天页支持会话列表 / 置顶 / 删除 / 多轮问诊；写操作经 `useRequireAuth` / `useEnsureAuthWithPrompt` 引导登录。
 
-待修复问题见 [docs/known-issues.md](docs/known-issues.md)。
-
 ---
 
 ## 提交前自检（作者自用）

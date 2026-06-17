@@ -92,9 +92,7 @@ docker tag docker.m.daocloud.io/library/redis:7.2-alpine redis:7.2-alpine
 
 完整环境变量见 [`deploy/.env.example`](.env.example)。
 
-## 已知问题（前端 / 业务）
-
-待修复 Bug 清单见 [`docs/known-issues.md`](../docs/known-issues.md)（含：AI 回复页面跳动、欢迎页 chip 发送后输入框未清空、游客重复登录 403 等）。
+**已知待修（前端）**：AI 回复时聊天区跳动；欢迎页 chip 自动发送后输入框未清空。另：游客重复登录可能 403。
 
 ## 冒烟测试
 
@@ -170,7 +168,6 @@ docker compose up -d   # 根目录 docker-compose.yaml
 |------|------|
 | `docker-compose.prod.yaml` | 生产编排 |
 | `deploy/.env.example` | 环境变量模板 |
-| `docs/known-issues.md` | 已知 Bug 清单 |
 | `deploy/deploy.sh` | Compose 封装脚本 |
 | `frontend/Dockerfile` | 前端构建 + Nginx |
 | `services/cardiology-cloud/Dockerfile` | Java 多模块镜像 |
