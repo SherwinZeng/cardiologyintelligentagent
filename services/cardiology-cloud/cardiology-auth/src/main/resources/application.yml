@@ -1,0 +1,40 @@
+server:
+  port: 30002
+
+spring:
+  profiles:
+    default: local
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://127.0.0.1:3306/cardiology-auth?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    username: cardiology
+    password: cardiology
+
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
+
+jwt:
+  sign-key: change-me-to-the-same-value-as-auth-service
+  token-validity: 7200
+
+auth:
+  guest:
+    key: "cardiology:guest:session:"
+    time: 3600
+  sms:
+    sign-name: 速通互联验证码
+    template-code: "100001"
+    send-interval: 60
+    code-valid-minutes: 5
+    send-lock-key: "cardiology:sms:send:lock:"
+    code-key: "cardiology:sms:send:code:"
+    captcha-key: "cardiology:sms:captcha:"
+    captcha-valid-seconds: 300
+    captcha-length: 4
+    captcha-chars: "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"
+
+aliyun:
+  access-key-id: your-access-key-id
+  access-key-secret: your-access-key-secret

@@ -50,6 +50,12 @@
         <dependency>
             <groupId>com.sherwinzeng.cardiology</groupId>
             <artifactId>cardiology-cloud-common-infra</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-amqp</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>com.sherwinzeng.cardiology</groupId>

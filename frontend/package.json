@@ -16,14 +16,6 @@
     "format:check": "prettier --check ."
   },
   "prettier": "prettier-config-ali",
-  "lint-staged": {
-    "*.{js,ts,vue,mjs,cjs}": [
-      "eslint --fix"
-    ],
-    "*.{json,md,css,scss,html,yml,yaml}": [
-      "prettier --write"
-    ]
-  },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.2",
     "@types/uuid": "^11.0.0",
@@ -52,8 +44,6 @@
     "eslint-plugin-vue": "^10.9.2",
     "fast-glob": "^3.3.3",
     "globals": "^17.6.0",
-    "husky": "^9.1.7",
-    "lint-staged": "^17.0.7",
     "prettier": "^3.8.4",
     "prettier-config-ali": "^1.5.0",
     "sass": "^1.101.0",

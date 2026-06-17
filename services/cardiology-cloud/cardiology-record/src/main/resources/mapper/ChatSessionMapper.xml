@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.sherwinzeng.cardiology.cardiologyrecord.repository.ChatSessionMapper">
+
+    <sql id="chatSessionColumns">
+        session_id,
+        uid,
+        title,
+        preview,
+        message_count,
+        status,
+        pinned,
+        pinned_at,
+        created_at,
+        updated_at,
+        archived_at
+    </sql>
+
+    <select id="selectInactiveActiveSessions" resultType="com.sherwinzeng.cardiology.cardiologyrecord.entity.ChatSession">
+        SELECT
+        <include refid="chatSessionColumns"/>
+        FROM chat_session
+        WHERE status = 'active'
+          AND updated_at &lt; #{cutoff}
+        ORDER BY updated_at ASC
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectExpiredArchivedSessions" resultType="com.sherwinzeng.cardiology.cardiologyrecord.entity.ChatSession">
+        SELECT
+        <include refid="chatSessionColumns"/>
+        FROM chat_session
+        WHERE status = 'archived'
+          AND archived_at IS NOT NULL
+          AND archived_at &lt; #{cutoff}
+        ORDER BY archived_at ASC
+        LIMIT #{limit}
+    </select>
+
+</mapper>

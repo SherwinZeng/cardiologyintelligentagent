@@ -1,0 +1,38 @@
+# Docker Compose 生产（profile: docker）
+# Nacos 服务发现 + lb:// 路由；配置仍来自本文件 + deploy/.env
+
+spring:
+  cloud:
+    nacos:
+      server-addr: nacos:8848
+      config:
+        enabled: false
+      discovery:
+        enabled: true
+    sentinel:
+      enabled: false
+    gateway:
+      routes:
+        - id: cardiology-auth
+          uri: lb://cardiology-auth-server
+          predicates:
+            - Path=/auth/**
+          filters:
+            - name: Retry
+              args:
+                retries: 1
+                statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
+        - id: cardiology-session
+          uri: lb://cardiology-session-server
+          predicates:
+            - Path=/chat/**
+          filters:
+            - name: Retry
+              args:
+                retries: 1
+                statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
+
+  data:
+    redis:
+      host: redis
+      port: 6379

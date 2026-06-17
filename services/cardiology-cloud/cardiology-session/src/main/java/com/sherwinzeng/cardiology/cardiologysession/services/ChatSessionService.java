@@ -6,11 +6,15 @@ import com.sherwinzeng.cardiology.cardiologysession.request.CreateChatSessionReq
 import com.sherwinzeng.cardiology.cardiologysession.request.PinChatSessionRequestParams;
 
 public interface ChatSessionService extends IService<ChatSession> {
-    String createSession(CreateChatSessionRequestParams createChatSessionRequestParams);
+    String createSession(CreateChatSessionRequestParams createChatSessionRequestParams,
+                         String userType,
+                         String authenticatedUid);
 
-    String listSessions(String uid, Integer page, Integer pageSize, String keyword);
+    String listSessions(String uid, Integer page, Integer pageSize, String keyword,
+                        String userType,
+                        String authenticatedUid);
 
-    String deleteSession(String uid, String sessionId);
+    String deleteSession(String uid, String sessionId, String userType, String authenticatedUid);
 
-    String pinSession(PinChatSessionRequestParams params);
+    String pinSession(PinChatSessionRequestParams params, String userType, String authenticatedUid);
 }

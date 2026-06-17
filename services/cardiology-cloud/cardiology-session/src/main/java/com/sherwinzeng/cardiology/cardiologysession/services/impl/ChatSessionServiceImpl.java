@@ -1,6 +1,7 @@
 package com.sherwinzeng.cardiology.cardiologysession.services.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.sherwinzeng.cardiology.cardiologycloudcommondata.exception.ChatBusinessException;
@@ -9,7 +10,7 @@ import com.sherwinzeng.cardiology.cardiologycloudcommondata.response.ResponseCod
 import com.sherwinzeng.cardiology.cardiologycloudcommonutils.json.JsonSerialization;
 import com.sherwinzeng.cardiology.cardiologysession.entity.ChatMessage;
 import com.sherwinzeng.cardiology.cardiologysession.entity.ChatSession;
-import com.sherwinzeng.cardiology.cardiologysession.entity.ChatSessionStatus;
+import com.sherwinzeng.cardiology.cardiologycloudcommondata.entity.chat.ChatSessionStatus;
 import com.sherwinzeng.cardiology.cardiologysession.repository.ChatMessageMapper;
 import com.sherwinzeng.cardiology.cardiologysession.repository.ChatSessionMapper;
 import com.sherwinzeng.cardiology.cardiologysession.request.CreateChatSessionRequestParams;
@@ -17,6 +18,9 @@ import com.sherwinzeng.cardiology.cardiologysession.request.PinChatSessionReques
 import com.sherwinzeng.cardiology.cardiologysession.response.ChatSessionPageResponse;
 import com.sherwinzeng.cardiology.cardiologysession.response.ChatSessionResponse;
 import com.sherwinzeng.cardiology.cardiologysession.services.ChatSessionService;
+import com.sherwinzeng.cardiology.cardiologysession.store.GuestChatSessionStore;
+import com.sherwinzeng.cardiology.cardiologysession.support.AuthHeaderSupport;
+import com.sherwinzeng.cardiology.cardiologysession.support.FormalChatSessionSupport;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -24,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -35,13 +40,24 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
 
     private final ChatSessionMapper chatSessionMapper;
     private final ChatMessageMapper chatMessageMapper;
+    private final GuestChatSessionStore guestChatSessionStore;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public String createSession(CreateChatSessionRequestParams createChatSessionRequestParams) {
+    public String createSession(CreateChatSessionRequestParams createChatSessionRequestParams,
+                                String userType,
+                                String authenticatedUid) {
+        AuthHeaderSupport.assertUidMatch(createChatSessionRequestParams.getUid(), authenticatedUid);
+        if (AuthHeaderSupport.isGuest(userType)) {
+            ChatSession chatSession = guestChatSessionStore.createSession(
+                    createChatSessionRequestParams.getUid(),
+                    createChatSessionRequestParams.getSession()
+            );
+            return JsonSerialization.toJson(BaseResponse.success(chatSession));
+        }
+
         String sessionId = createChatSessionRequestParams.getSession();
         String uid = createChatSessionRequestParams.getUid();
-
         ChatSession existing = chatSessionMapper.selectById(sessionId);
         if (existing != null) {
             if (!uid.equals(existing.getUid())) {
@@ -63,28 +79,45 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
     }
 
     @Override
-    public String listSessions(String uid, Integer page, Integer pageSize, String keyword) {
+    public String listSessions(String uid, Integer page, Integer pageSize, String keyword,
+                               String userType,
+                               String authenticatedUid) {
+        AuthHeaderSupport.assertUidMatch(uid, authenticatedUid);
         int resolvedPage = page == null || page < 1 ? DEFAULT_PAGE : page;
         int resolvedPageSize = pageSize == null || pageSize < 1
                 ? DEFAULT_PAGE_SIZE
                 : Math.min(pageSize, MAX_PAGE_SIZE);
-        String trimmedKeyword = StringUtils.hasText(keyword) ? keyword.trim() : null;
-
-        Page<ChatSession> pageQuery = new Page<>(resolvedPage, resolvedPageSize);
-        LambdaQueryWrapper<ChatSession> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(ChatSession::getUid, uid);
-        if (trimmedKeyword != null) {
-            queryWrapper.and(wrapper -> wrapper
-                    .like(ChatSession::getTitle, trimmedKeyword)
-                    .or()
-                    .like(ChatSession::getPreview, trimmedKeyword));
-        }
-        queryWrapper.orderByDesc(ChatSession::getPinned)
-                .orderByDesc(ChatSession::getPinnedAt)
-                .orderByDesc(ChatSession::getUpdatedAt);
-        Page<ChatSession> result = chatSessionMapper.selectPage(pageQuery, queryWrapper);
 
         ChatSessionPageResponse pageResponse = new ChatSessionPageResponse();
+        if (AuthHeaderSupport.isGuest(userType)) {
+            List<ChatSession> allSessions = guestChatSessionStore.listSessions(uid, keyword);
+            int total = allSessions.size();
+            int fromIndex = Math.min((resolvedPage - 1) * resolvedPageSize, total);
+            int toIndex = Math.min(fromIndex + resolvedPageSize, total);
+            pageResponse.setRecords(allSessions.subList(fromIndex, toIndex).stream().map(session -> {
+                ChatSessionResponse response = new ChatSessionResponse();
+                response.setSessionId(session.getSessionId());
+                response.setUid(session.getUid());
+                response.setTitle(session.getTitle());
+                response.setPreview(session.getPreview());
+                response.setMessageCount(session.getMessageCount());
+                response.setStatus(session.getStatus());
+                response.setPinned(Boolean.TRUE.equals(session.getPinned()));
+                response.setPinnedAt(session.getPinnedAt());
+                response.setCreatedAt(session.getCreatedAt());
+                response.setUpdatedAt(session.getUpdatedAt());
+                return response;
+            }).toList());
+            pageResponse.setTotal(total);
+            pageResponse.setPage(resolvedPage);
+            pageResponse.setPageSize(resolvedPageSize);
+            pageResponse.setHasMore((long) resolvedPage * resolvedPageSize < total);
+            return JsonSerialization.toJson(BaseResponse.success(pageResponse));
+        }
+
+        String trimmedKeyword = StringUtils.hasText(keyword) ? keyword.trim() : null;
+        Page<ChatSession> pageQuery = new Page<>(resolvedPage, resolvedPageSize);
+        IPage<ChatSession> result = chatSessionMapper.selectActivePage(pageQuery, uid, trimmedKeyword);
         pageResponse.setRecords(result.getRecords().stream().map(session -> {
             ChatSessionResponse response = new ChatSessionResponse();
             response.setSessionId(session.getSessionId());
@@ -108,7 +141,13 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public String deleteSession(String uid, String sessionId) {
+    public String deleteSession(String uid, String sessionId, String userType, String authenticatedUid) {
+        AuthHeaderSupport.assertUidMatch(uid, authenticatedUid);
+        if (AuthHeaderSupport.isGuest(userType)) {
+            guestChatSessionStore.deleteSession(uid, sessionId);
+            return JsonSerialization.toJson(BaseResponse.success(null));
+        }
+
         ChatSession session = chatSessionMapper.selectById(sessionId);
         if (session == null) {
             throw new ChatBusinessException(ResponseCode.BAD_REQUEST, "会话不存在");
@@ -116,10 +155,8 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
         if (!uid.equals(session.getUid())) {
             throw new ChatBusinessException(ResponseCode.FORBIDDEN, "无权删除该会话");
         }
-
         LambdaQueryWrapper<ChatMessage> messageQuery = new LambdaQueryWrapper<>();
-        messageQuery.eq(ChatMessage::getUid, uid)
-                .eq(ChatMessage::getSessionId, sessionId);
+        messageQuery.eq(ChatMessage::getUid, uid).eq(ChatMessage::getSessionId, sessionId);
         chatMessageMapper.delete(messageQuery);
         chatSessionMapper.deleteById(sessionId);
         return JsonSerialization.toJson(BaseResponse.success(null));
@@ -127,13 +164,15 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public String pinSession(PinChatSessionRequestParams params) {
-        ChatSession session = chatSessionMapper.selectById(params.getSession());
-        if (session == null) {
-            throw new ChatBusinessException(ResponseCode.BAD_REQUEST, "会话不存在");
+    public String pinSession(PinChatSessionRequestParams params, String userType, String authenticatedUid) {
+        AuthHeaderSupport.assertUidMatch(params.getUid(), authenticatedUid);
+        if (AuthHeaderSupport.isGuest(userType)) {
+            throw new ChatBusinessException(ResponseCode.BAD_REQUEST, "游客不支持置顶");
         }
-        if (!params.getUid().equals(session.getUid())) {
-            throw new ChatBusinessException(ResponseCode.FORBIDDEN, "无权操作该会话");
+
+        ChatSession session = FormalChatSessionSupport.requireOwnedSession(chatSessionMapper, params.getUid(), params.getSession());
+        if (ChatSessionStatus.ARCHIVED.equals(session.getStatus())) {
+            throw new ChatBusinessException(ResponseCode.BAD_REQUEST, "会话已归档，无法置顶");
         }
 
         ChatSession update = new ChatSession();

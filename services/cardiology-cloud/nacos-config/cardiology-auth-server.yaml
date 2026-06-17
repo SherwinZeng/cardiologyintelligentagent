@@ -8,7 +8,7 @@ jwt:
 auth:
   guest:
     key: "cardiology:guest:session:"
-    time: 7200
+    time: 3600
   sms:
     sign-name: 速通互联验证码
     template-code: "100001"

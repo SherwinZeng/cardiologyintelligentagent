@@ -1,6 +1,5 @@
 from cardiology_chat.graph.state import CardiologyState
 from cardiology_chat.graph.utils import (
-    all_user_text,
     build_standard_llm_fields,
     has_keyword,
     invoke_llm_json,
@@ -12,6 +11,7 @@ from cardiology_chat.prompts.symptom import (
     RED_FLAG_ADVICE,
     MEDICAL_DISCLAIMER,
     SYMPTOM_FOLLOW_UP,
+    SYMPTOM_RESOLVED_KEYWORDS,
     NON_URGENT_SYMPTOM_ADVICE,
 )
 
@@ -55,10 +55,21 @@ def _build_symptom_output(
 
 def symptom_collection_node(state: CardiologyState) -> dict:
     text = latest_user_message(state)
-    red_flag = has_keyword(all_user_text(state), RED_FLAG_KEYWORDS)
 
-    if red_flag:
+    # 用户明确说症状缓解 → 走 LLM 正常回复，解除红旗锁
+    if has_keyword(text, SYMPTOM_RESOLVED_KEYWORDS, negation_aware=False):
+        llm_data = invoke_llm_json(state, SYMPTOM_LLM_SYSTEM)
+        output = _build_symptom_output(state, text, red_flag=False, llm_data=llm_data)
+        output["red_flag_suspected"] = False
+        return output
+
+    # 固定急救模板：仅在本轮新出现红旗词时触发，不用全量历史反复刷屏
+    if has_keyword(text, RED_FLAG_KEYWORDS):
         return _build_symptom_output(state, text, red_flag=True)
 
     llm_data = invoke_llm_json(state, SYMPTOM_LLM_SYSTEM)
-    return _build_symptom_output(state, text, red_flag=False, llm_data=llm_data)
+    output = _build_symptom_output(state, text, red_flag=False, llm_data=llm_data)
+    # 曾触发过红旗且用户仍在症状语境（如「不想去医院」）→ 至少保持 yellow
+    if state.get("red_flag_suspected") and output.get("triage_level") == "green":
+        output["triage_level"] = "yellow"
+    return output

@@ -1,1 +1,2 @@
 com.sherwinzeng.cardiology.cardiologycloudcommoninfra.redis.config.RedisAutoConfiguration
+com.sherwinzeng.cardiology.cardiologycloudcommoninfra.mq.config.RabbitMqAutoConfiguration

@@ -1,76 +1,120 @@
-# 云服务器部署指南
+# 生产部署
+
+使用 [`docker-compose.prod.yaml`](../docker-compose.prod.yaml) 在 Linux 服务器上一键编排全栈。
 
 ## 架构
 
 ```text
 Internet :80
-    ↓
-frontend (Nginx)
-    ├→ 静态资源 dist
-    └→ /api/* 反代 → cardiology-session:30001（当前直连，未经网关）
-                           └→ ai-agent:8000（内网）
-                           ├→ MySQL
-                           └→ Redis
-Nacos（内网，配置中心）
+    │
+┌───▼──────────────────────────────────────────┐
+│ frontend（Nginx 静态 + /api → gateway）       │
+└───┬──────────────────────────────────────────┘
+    │
+┌───▼──────────────────────────────────────────┐
+│ gateway :30000                                │
+└───┬──────────────────────────────────────────┘
+    │
+┌───▼──────────────────────────────────────────┐
+│ auth :30002 · session :30001 · record Worker  │
+└───┬──────────────────────────────────────────┘
+    │
+┌───▼──────────────────────────────────────────┐
+│ ai-agent :8000                                │
+└───┬──────────────────────────────────────────┘
+    │
+┌───▼──────────────────────────────────────────┐
+│ MySQL · Redis · RabbitMQ · Nacos（服务注册）   │
+└──────────────────────────────────────────────┘
 ```
 
-> **注意**：本地开发已启用 `cardiology-gateway :30000` 统一鉴权与路由；生产 Compose 尚未纳入 gateway / auth，后续四期将补齐。
-
-公网只暴露 **frontend 的 80 端口**；MySQL、Redis、Nacos、Java、Python 均在 Docker 内网。
+公网仅暴露 **frontend 的 80 端口**；数据库与中间件在 Docker 内网。
 
 ## 服务器要求
 
 - Linux（推荐 Ubuntu 22.04+）
 - Docker 24+、Docker Compose v2
-- 2 核 4G 内存以上（Nacos + Java + Python 同时运行）
-- 已开放安全组 **80**（HTTPS 见下文）
+- **4 核 16G** 推荐
+- 安全组开放 **80**（HTTPS 见下文）
 
 ## 首次部署
 
 ```bash
-# 1. 克隆代码
-git clone <your-repo-url> CardiologyIntelligentAgent
+git clone https://github.com/SherwinZeng/cardiologyintelligentagent.git CardiologyIntelligentAgent
 cd CardiologyIntelligentAgent
 
-# 2. 配置环境变量
 cp deploy/.env.example deploy/.env
-# 编辑 deploy/.env，至少修改:
-#   MYSQL_ROOT_PASSWORD / MYSQL_PASSWORD
-#   NACOS_PASSWORD
-#   DJANGO_SECRET_KEY
-#   DEEPSEEK_API_KEY
+# 编辑 deploy/.env：MYSQL_*、JWT_SIGN_KEY、DEEPSEEK_API_KEY、ALIYUN_ACCESS_KEY_* 等
 
-# 3. 构建并启动
 chmod +x deploy/deploy.sh
 ./deploy/deploy.sh up -d --build
 
-# 4. 查看状态
 ./deploy/deploy.sh ps
-./deploy/deploy.sh logs -f frontend
 ```
 
 浏览器访问：`http://<服务器公网IP>/`
 
+> 首次构建 ai-agent 可能较久（Java 单次 rebuild 约 20～40 分钟）。Java 服务使用 **`SPRING_PROFILES_ACTIVE=docker`**，注册到 **Nacos**，网关通过 **`lb://`** 服务发现路由。  
+> 容器 `Up` 后网关/auth 仍可能需 **1～2 分钟** 才就绪，过早访问可能短暂 502。
+
+### 无 Git 更新（打包上传）
+
+```bash
+# 本机
+tar czf cardiology-deploy.tgz --exclude='.git' --exclude='node_modules' --exclude='frontend/node_modules' --exclude='.cursor' .
+scp cardiology-deploy.tgz root@<服务器IP>:~/
+
+# 服务器
+cd ~/CardiologyIntelligentAgent && tar xzf ~/cardiology-deploy.tgz
+./deploy/deploy.sh up -d --build
+```
+
+### 国内 ECS 拉镜像失败
+
+Docker Hub 超时时，可先经镜像站拉取并 tag，再 `up --build`：
+
+```bash
+docker pull docker.m.daocloud.io/library/redis:7.2-alpine
+docker tag docker.m.daocloud.io/library/redis:7.2-alpine redis:7.2-alpine
+# mysql / rabbitmq / nacos 同理，见常见问题
+```
+
+## 配置分层（local vs docker）
+
+| 环境 | Profile | 配置来源 | 网关路由 |
+|------|---------|----------|----------|
+| 本地 `mvn spring-boot:run` | `local`（默认） | `application.yml` + `application-local.yml` + Nacos 配置（可选） | `lb://` + Nacos 注册 |
+| Docker 生产 | `docker` | `application.yml` + `application-docker.yml` + `deploy/.env` | `lb://`（路由在 `application-docker.yml`，注册在 Nacos） |
+
+**`deploy/.env` 必填**：`MYSQL_*`、`RABBITMQ_*`、`JWT_SIGN_KEY`（≥32 字符）、`DEEPSEEK_API_KEY`。  
+**短信登录还需**：`ALIYUN_ACCESS_KEY_ID`、`ALIYUN_ACCESS_KEY_SECRET`（阿里云 RAM · [号码认证](https://dypns.console.aliyun.com/) 短信验证码 API）。可选覆盖：`AUTH_SMS_SIGN_NAME`、`AUTH_SMS_TEMPLATE_CODE`（默认 `速通互联验证码` / `100001`）。  
+**不要**设置 `NACOS_USERNAME` / `NACOS_PASSWORD`（生产 Nacos 关闭鉴权，写了反而会 `unknown user`）。
+
+完整环境变量见 [`deploy/.env.example`](.env.example)。
+
+## 已知问题（前端 / 业务）
+
+待修复 Bug 清单见 [`docs/known-issues.md`](../docs/known-issues.md)（含：AI 回复页面跳动、欢迎页 chip 发送后输入框未清空、游客重复登录 403 等）。
+
 ## 冒烟测试
 
 ```bash
-# 当前生产编排直连 session，无需 JWT
+TOKEN=$(curl -s -X POST "http://<服务器IP>/api/auth/guest/login/v1" \
+  -H "Content-Type: application/json" \
+  -d '{"id":"guest-demo-001"}' | jq -r '.data.token')
+
 curl -X POST "http://<服务器IP>/api/chat/generalUnderstanding/v1" \
   -H "Content-Type: application/json" \
-  -d '{"uid":"user-001","session":"session-001","message":"我胸口疼"}'
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"uid":"guest-demo-001","session":"session-001","message":"我胸口疼"}'
 ```
 
-本地开发（经网关）：
+## 已有 MySQL 数据卷升级
+
+若服务器上已有旧版 `mysql-data` 卷，按需执行迁移指南见 [`docker/mysql/migrations/`](../docker/mysql/migrations/)。
 
 ```bash
-TOKEN=$(curl -s -X POST http://127.0.0.1:30000/auth/guest/login/v1 \
-  -H "Content-Type: application/json" \
-  -d '{"guestId":"guest-demo-001"}' | jq -r '.data.token')
-
-curl -X POST http://127.0.0.1:30000/chat/generalUnderstanding/v1 \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{"uid":"user-001","session":"session-001","message":"我胸口疼"}'
+docker exec -i cardiology-mysql mysql -u cardiology -p cardiology < docker/mysql/migrations/04-chat-session-lifecycle.sql
 ```
 
 ## 更新发布
@@ -80,40 +124,54 @@ git pull
 ./deploy/deploy.sh up -d --build
 ```
 
-## HTTPS（推荐）
-
-生产环境建议在宿主机或独立 Nginx 上配置 TLS：
+## HTTPS
 
 1. 域名解析到服务器 IP
 2. 使用 certbot 申请证书
-3. 443 反代到 `127.0.0.1:80`，或改 `FRONTEND_HTTP_PORT` 并在 frontend 前加 TLS 终止层
+3. 443 反代到 `127.0.0.1:80`，或在 frontend 前增加 TLS 终止层
 
-## Nacos 配置（可选）
+生产 **docker** profile 采用「**本地 YAML 定义路由 + Nacos 做服务注册**」：
 
-`cardiology-session` 已通过环境变量注入数据库、Redis、AI 地址，**可不手动导入 Nacos**。
+- 路由：`cardiology-gateway/.../application-docker.yml` 中 `uri: lb://cardiology-auth-server` 等
+- 注册：各 Java 服务 `discovery.enabled: true`，Compose 注入 `SPRING_CLOUD_NACOS_SERVER_ADDR=nacos:8848`
 
-若仍希望使用 Nacos 管理配置，将 `services/cardiology-cloud/nacos-config/` 下 YAML 中的地址改为 Docker 服务名后导入控制台。  
-短信登录生产环境需配置 `aliyun.*` 与 `auth.sms.*`，并在网关白名单保留 `/auth/sms/login/**`。
+未使用 Nacos Config 中心导入路由（`config.enabled: false`）。若后续要迁到 Nacos 配置中心，可将 `nacos-config/cardiology-gateway-server.yaml` 发布到 Nacos 并开启 config import。
+
+## Nacos
+
+生产 Compose **默认启动** Nacos（`cardiology-nacos`），Java 服务注册后网关 `lb://` 才能解析实例。
+
+本地开发同样用 Nacos：
+
+```bash
+docker compose up -d   # 根目录 docker-compose.yaml
+# Java profile=local → application-local.yml，server-addr=127.0.0.1:8848
+```
+
+控制台（仅内网调试）：`http://<服务器IP>:8080/nacos`（需在安全组临时开放 8080，或 `docker exec` 进容器访问）。
 
 ## 常见问题
 
-| 现象 | 排查 |
-|------|------|
+| 现象 | 原因 / 处理 |
+|------|-------------|
+| **502 /api** | Nacos 未 healthy、Java 未注册，或**启动未完成**（等 1～2 分钟）；查 `docker logs cardiology-gateway`；确认 `.env` **无** `NACOS_*` 账号；rebuild Java 四服务 |
+| Docker 镜像 not found | 国内 ECS 连不上 Docker Hub → 用 daocloud 等镜像站预拉（见上文） |
+| Nacos `unknown user` | `deploy/.env` 里仍有 NACOS 账号密码，删掉后重启 Java |
+| Nacos config is empty | `local` profile 未导入远程 YAML，可忽略；`docker` profile 已关闭 Nacos Config |
+| 401 登录失败 | `deploy/.env` 中 `JWT_SIGN_KEY` 未改或与 gateway/auth 不一致 |
+| 短信发不出 | 配置 `ALIYUN_ACCESS_KEY_ID/SECRET` 后 rebuild auth；`docker logs cardiology-auth \| grep 短信` |
 | 前端空白 | `./deploy/deploy.sh logs frontend` |
-| 502 /api | `./deploy/deploy.sh logs cardiology-session ai-agent` |
-| AI 无响应 | 检查 `DEEPSEEK_API_KEY` 是否有效 |
-| session 启动失败 | 等待 MySQL healthcheck；`logs mysql cardiology-session` |
+| AI 无响应 | `DEEPSEEK_API_KEY` |
+| Java 反复重启 | `docker logs cardiology-auth`；查 MySQL 密码、fat jar |
 
-## 文件说明
+## 相关文件
 
 | 文件 | 说明 |
 |------|------|
 | `docker-compose.prod.yaml` | 生产编排 |
 | `deploy/.env.example` | 环境变量模板 |
-| `deploy/deploy.sh` | compose 封装脚本 |
+| `docs/known-issues.md` | 已知 Bug 清单 |
+| `deploy/deploy.sh` | Compose 封装脚本 |
 | `frontend/Dockerfile` | 前端构建 + Nginx |
-| `frontend/nginx.conf` | 静态资源 + `/api` 反代 |
-| `services/cardiology-cloud/Dockerfile` | Java session 服务 |
+| `services/cardiology-cloud/Dockerfile` | Java 多模块镜像 |
 | `services/ai-agent/Dockerfile` | Python AI 服务 |
-| `docker/mysql/init/02-chat-message.sql` | 消息表初始化 |
-| `docker/mysql/init/03-chat-session-pinned.sql` | 会话置顶字段迁移 |

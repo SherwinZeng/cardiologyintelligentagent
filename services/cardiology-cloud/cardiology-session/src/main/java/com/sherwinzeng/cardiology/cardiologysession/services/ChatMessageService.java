@@ -6,6 +6,8 @@ public interface ChatMessageService {
             String uid,
             String session,
             Long beforeId,
-            Integer pageSize
+            Integer pageSize,
+            String userType,
+            String authenticatedUid
     );
 }
