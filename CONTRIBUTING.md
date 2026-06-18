@@ -43,6 +43,16 @@
 
 Git 仓库根目录为 `CardiologyIntelligentAgent/`（`.git` 在根目录，不在 `frontend/` 子目录）。
 
+从 2026-06-18 起，版本 tag 统一使用 `vMAJOR.MINOR.PATCH[-beta.N]`，例如 `v0.2.0-beta.1`、`v0.2.0`、`v0.2.1`。旧 tag（`beta1.2`、`beta1.1`、`0.3` 等）保留为历史，不再继续沿用。
+
+发布前需要同步更新：
+
+- `VERSION`
+- `CHANGELOG.md`
+- GitHub Release Notes
+
+详细流程见 [docs/release-process.md](docs/release-process.md)。
+
 ---
 
 ## 本地开发环境

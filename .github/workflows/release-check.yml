@@ -1,0 +1,70 @@
+name: release-check
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+concurrency:
+  group: release-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: yarn
+          cache-dependency-path: frontend/yarn.lock
+
+      - name: Install
+        run: yarn install --frozen-lockfile --ignore-engines
+
+      - name: Lint
+        run: yarn lint
+
+      - name: Format check
+        run: yarn format:check
+
+      - name: Build
+        run: yarn build
+
+  java-compile:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/cardiology-cloud
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: maven
+
+      - name: Compile
+        run: mvn -DskipTests compile
+
+  ai-agent-syntax:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/ai-agent
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Compile Python modules
+        run: python -m compileall cardiology_chat common configuration

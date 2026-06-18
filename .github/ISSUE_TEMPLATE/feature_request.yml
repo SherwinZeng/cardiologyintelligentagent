@@ -1,0 +1,42 @@
+name: 功能建议
+description: 提出新功能、体验优化或产品想法
+title: "[Feature] "
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: 影响模块
+      options:
+        - frontend
+        - cardiology-cloud
+        - ai-agent
+        - deploy
+        - docs
+        - product
+        - other
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: 背景问题
+      description: 这个功能想解决什么真实问题？
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 建议方案
+      description: 你希望它怎么工作？
+    validations:
+      required: true
+  - type: textarea
+    id: value
+    attributes:
+      label: 用户价值
+      description: 对患者、访客、医生或项目展示有什么帮助？
+  - type: textarea
+    id: extra
+    attributes:
+      label: 其他信息
+      description: 可以附参考产品、截图、流程图或补充说明。

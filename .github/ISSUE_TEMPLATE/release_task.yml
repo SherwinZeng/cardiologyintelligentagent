@@ -1,0 +1,38 @@
+name: 发布任务
+description: 规划一次 beta 或正式版发布
+title: "[Release] v"
+body:
+  - type: input
+    id: version
+    attributes:
+      label: 目标版本
+      placeholder: v0.2.0-beta.1
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: 发布范围
+      placeholder: |
+        - Web 问诊体验稳定
+        - AI 历史上下文修复
+        - GitHub README 与截图完善
+    validations:
+      required: true
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: 发布检查
+      options:
+        - label: 已更新 VERSION
+        - label: 已更新 CHANGELOG.md
+        - label: 已通过前端 lint / format / build
+        - label: 已通过 Java compile
+        - label: 已通过 Python syntax / check
+        - label: 已确认 README 截图和快速开始有效
+        - label: 已准备 GitHub Release Notes
+  - type: textarea
+    id: risks
+    attributes:
+      label: 风险与遗留问题
+      description: 本次发布还有哪些已知限制？

@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 安全漏洞反馈
+    url: https://github.com/SherwinZeng/cardiologyintelligentagent/security/policy
+    about: 安全问题请不要公开提交 Issue，请按 SECURITY.md 私下联系。
