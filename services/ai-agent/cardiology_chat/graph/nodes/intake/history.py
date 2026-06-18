@@ -1,11 +1,16 @@
-from cardiology_chat.graph.state import CardiologyState
-from cardiology_chat.graph.utils import (
+"""既往史采集节点（route=history）。
+
+除 LLM 回复外，还会从对话文本里规则提取 PMH 布尔标记（高血压、糖尿病等），
+写入 state 供后续 risk 节点使用。
+"""
+
+from cardiology_chat.graph.llm import (
     all_user_text,
-    build_standard_llm_fields,
-    invoke_llm_json,
+    invoke_llm_json_with_retry,
     latest_user_message,
-    pick_llm_field,
 )
+from cardiology_chat.graph.llm.invoke import build_standard_llm_fields
+from cardiology_chat.graph.state import CardiologyState
 from cardiology_chat.prompts.history import (
     HISTORY_FOLLOW_UP,
     HISTORY_ACK,
@@ -78,11 +83,15 @@ def _build_history_output(
 
 
 def medical_history_inquiry_node(state: CardiologyState) -> dict:
+    """既往史采集：规则提取 PMH 布尔标记 + LLM 生成追问与回复。
+
+    高风险 PMH 组合会上调 triage 至 yellow，供后续 risk 节点使用。
+    """
     text = latest_user_message(state)
     conversation_text = all_user_text(state)
     pmh = _merge_pmh_flags(state, conversation_text)
     high_risk = _is_high_risk_pmh(conversation_text)
-    llm_data = invoke_llm_json(state, HISTORY_LLM_SYSTEM)
+    llm_data = invoke_llm_json_with_retry(state, HISTORY_LLM_SYSTEM, use_conversation_rules=True)
 
     return _build_history_output(
         text,

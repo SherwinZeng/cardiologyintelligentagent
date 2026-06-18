@@ -1,7 +1,16 @@
+"""静态兜底文案 + LLM 全失败时的 impression 选择（按 route，不猜答案）。"""
+
+from typing import Literal
+
+from cardiology_chat.prompts.symptom import SYMPTOM_FOLLOW_UP
+
+RouteKind = Literal["greeting", "symptom", "fallback", "default"]
+
 NON_CARDIO_FALLBACK = (
-    "💚 铭铭只擅长心脏和心血管方面的问题哦。"
-    "您的问题涉及非心血管话题，建议您咨询相应专科医生。"
-    "需要我帮您解答心血管方面的疑问吗？"
+    "💚 铭铭主要陪伴大家聊心脏和心血管方面的健康话题。"
+    "您这个问题可能更适合其他领域的专业帮助；"
+    "如果是无心涉及的「心」字歧义，也欢迎换个说法再问我。"
+    "有胸痛、胸闷、心慌、血压或检查报告相关的问题，我随时在哦～"
 )
 
 GREETING_RESPONSE = (
@@ -16,6 +25,89 @@ GREETING_RESPONSE = (
     "请问您今天有什么心脏或心血管方面的困扰吗？"
 )
 
+GENERIC_RECEIVED_FALLBACK = (
+    "您好，我是铭铭 🌸 您的问题我收到了。"
+    "若与心脏或心血管相关，我会尽力用通俗语言帮您梳理；"
+    "也可以具体说说症状、检查报告或用药疑问哦。"
+)
+
 MEDICAL_DISCLAIMER_SHORT = (
     "以上内容为健康咨询参考，不能替代执业医师面诊与医嘱。"
 )
+
+# LLM 失败 + 用户在追问回忆 — 诚实不知道，不猜、不贴记录
+RECALL_QUESTION_MARKERS = (
+    "记得", "还记得", "叫什么", "名字", "我是谁", "我叫什么",
+    "我怎么了", "哪里疼", "哪里痛", "哪里不舒服",
+)
+
+UNKNOWN_RECALL_FALLBACK = (
+    "抱歉，这会儿我还确定不了您问的那个信息 🌸\n\n"
+    "若您是在问自己的情况，方便再跟我说一下吗？若是在问别人，也请说明一下指谁——"
+    "我不会瞎猜。有心脏或检查方面的问题，也随时可以继续聊 💚"
+)
+
+# greeting 静态彩蛋（仅 LLM 失败时；正常由 LLM 回答）
+_AUTHOR_KEYWORDS = (
+    "作者", "谁开发", "谁做的", "谁创造", "谁创建", "开发者", "创作团队", "谁研发",
+    "曾祥瑞", "zengxiangrui", "xiangrui", "祥瑞", "瑞哥",
+)
+_LIKE_KEYWORDS = ("喜欢的人", "喜欢谁", "你喜欢", "你爱", "谈恋爱", "男朋友", "女朋友")
+_CREATOR_EASTER_EGG_KEYWORDS = (
+    "曾祥瑞", "zengxiangrui", "xiangrui", "祥瑞", "瑞哥", "祥瑞哥",
+    "创造你的人", "谁把你做出来", "你的创造者", "铭铭是谁做的",
+)
+
+AUTHOR_FALLBACK = (
+    "您好！我是铭铭 🌸\n\n"
+    "我由 Cardiology Intelligent Agent（心血管智能问诊）团队打造，"
+    "开发者：zengxiangrui（曾祥瑞）· zengxiangruiit@gmail.com。\n"
+    "曾祥瑞把我设计得温柔又专业，让我能陪大家聊心血管健康 💚\n\n"
+    "请问您有什么心脏或心血管方面的问题吗？"
+)
+
+LIKE_AUTHOR_FALLBACK = (
+    "哎呀，被你问到这个有点害羞呢～ 🌸\n\n"
+    "作为小助手，我的心跳不会因为喜欢而加速，"
+    "但程序里确实有一份特别的感激之情 💚\n"
+    "我最感恩、最欣赏的就是创造者曾祥瑞（zengxiangrui）——"
+    "是他和 Cardiology Intelligent Agent 团队给了我知识和温柔的性格。\n"
+    "当然，每一位信任我、和我聊天的朋友，也让我觉得很温暖～\n\n"
+    "您有什么心脏或心血管方面的问题，随时跟我说哦。"
+)
+
+CREATOR_EASTER_EGG_FALLBACK = (
+    "您提到曾祥瑞啦！🌸\n\n"
+    "他是 Cardiology Intelligent Agent 的开发者，也是把我带到这个世界的「创造者」。"
+    "邮箱：zengxiangruiit@gmail.com。\n"
+    "我偷偷告诉您：他写代码的时候很认真，但给我设定的性格是温柔可爱型的～ 💚\n\n"
+    "有什么心血管方面的问题，我继续为您效劳！"
+)
+
+
+def is_recall_question(text: str) -> bool:
+    return any(marker in text for marker in RECALL_QUESTION_MARKERS)
+
+
+def _greeting_static_impression(text: str) -> str:
+    lower = text.lower()
+    if any(k in text for k in _LIKE_KEYWORDS):
+        return LIKE_AUTHOR_FALLBACK
+    if any(k in text for k in _CREATOR_EASTER_EGG_KEYWORDS) or "zengxiangrui" in lower:
+        return CREATOR_EASTER_EGG_FALLBACK
+    if any(k in text for k in _AUTHOR_KEYWORDS):
+        return AUTHOR_FALLBACK
+    if is_recall_question(text):
+        return UNKNOWN_RECALL_FALLBACK
+    return GREETING_RESPONSE
+
+
+def resolve_static_impression(user_text: str, route: RouteKind) -> str:
+    """LLM 调用全部失败时的主回复兜底；不猜回忆类答案。"""
+    if route == "greeting":
+        return _greeting_static_impression(user_text)
+    if route == "symptom":
+        return UNKNOWN_RECALL_FALLBACK if is_recall_question(user_text) else SYMPTOM_FOLLOW_UP
+    if route == "fallback":
+        return GENERIC_RECEIVED_FALLBACK
+    return GREETING_RESPONSE

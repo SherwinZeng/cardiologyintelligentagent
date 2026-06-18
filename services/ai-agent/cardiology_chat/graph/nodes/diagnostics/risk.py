@@ -1,3 +1,9 @@
+"""心血管风险评估节点（流水线第 2 步，纯规则，不调 LLM）。
+
+读取 state 里 PMH 布尔标记 + investigation_summary + red_flag_suspected，
+汇总风险因素并可能上调 triage_level。
+"""
+
 from cardiology_chat.graph.state import CardiologyState
 from cardiology_chat.prompts.risk import (
     RISK_SUMMARY_TEMPLATE,
@@ -47,6 +53,10 @@ def _assess_risk_level(state: CardiologyState, factors: list[str]) -> tuple[str,
 
 
 def cardiac_risk_stratification_node(state: CardiologyState) -> dict:
+    """心血管风险评估（lab 流水线第 2 步）：纯规则，不调 LLM。
+
+    汇总 PMH + investigation_summary + red_flag，评估风险并追加摘要到 impression/advice。
+    """
     factors = _collect_risk_factors(state)
     level, triage = _assess_risk_level(state, factors)
 

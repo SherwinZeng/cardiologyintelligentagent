@@ -14,15 +14,15 @@ class CardiologyGeneralUnderstandingView(APIView):
     def post(self, request):
         serializer = ChatSerializer(data=request.data)
         if not serializer.is_valid():
-            return Response({"code": ResponseCode.BAD_REQUEST,"message": str(serializer.errors),"data": None},
-                status=ResponseCode.BAD_REQUEST,
-            )
-
+            return Response({"code": ResponseCode.BAD_REQUEST, "message": str(serializer.errors), "data": None},
+                            status=ResponseCode.BAD_REQUEST,
+                            )
         data = serializer.validated_data
-        result = invoke_general_understanding(uid=data["uid"],session=data["session"],message=data["message"],)
-        return Response({"code": ResponseCode.SUCCESS,"message": ResponseMessage.SUCCESS,"data": result},
-            status=ResponseCode.SUCCESS,
-        )
+        result = invoke_general_understanding(uid=data["uid"], session=data["session"], message=data["message"],
+                                              history=data["history"])
+        return Response({"code": ResponseCode.SUCCESS, "message": ResponseMessage.SUCCESS, "data": result},
+                        status=ResponseCode.SUCCESS,
+                        )
 
 
 class CardiologyReasoningView(APIView):

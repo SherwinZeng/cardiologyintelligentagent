@@ -1,3 +1,8 @@
+"""就医转诊建议节点（流水线第 3 步，纯模板拼接）。
+
+根据 triage_level 追加科室、 urgency、何时去急诊等文案到 management_advice。
+"""
+
 from cardiology_chat.graph.state import CardiologyState
 from cardiology_chat.prompts.referral import (
     REFERRAL_ADVICE,
@@ -10,6 +15,7 @@ from cardiology_chat.prompts.referral import (
 
 
 def physician_referral_node(state: CardiologyState) -> dict:
+    """就医转诊建议（lab 流水线第 3 步）：按 triage_level 拼接科室与急诊提示，不调 LLM。"""
     triage = state.get("triage_level") or "green"
 
     referral = REFERRAL_ADVICE.format(

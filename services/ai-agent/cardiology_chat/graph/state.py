@@ -1,11 +1,33 @@
+"""LangGraph 共享状态 CardiologyState。
+
+所有节点读写的字段定义在这里。节点函数返回 dict，LangGraph 会 merge 进 state。
+
+字段分区：
+  - conversation_memory 对话事实（每轮从 Java history 恢复）
+  - messages / route     对话与路由
+  - hpi_* / pmh_*        采集中间结果（现病史 / 既往史）
+  - investigation_*      检查解读上下文
+  - triage_level 等四件套  最终输出，映射到 Java GeneralUnderstandingResponse：
+      triage_level        → urgency
+      clinical_impression → explanation
+      management_advice   → advice
+      medical_disclaimer  → disclaimer
+"""
+
 from operator import add
-from typing import Annotated, TypedDict, Literal
+from typing import Annotated, Literal, TypedDict
+
 from langchain_core.messages import AnyMessage
 
 
 class CardiologyState(TypedDict):
+    # messages 使用 Annotated[..., add]：新消息 append 而非覆盖
     messages: Annotated[list[AnyMessage], add]
-    route: Literal["symptom", "history", "lab", "greeting", "fallback"]
+    route: Literal["symptom", "history", "lab", "medication", "greeting", "fallback"]
+
+    # ── 对话事实记忆 ──
+    conversation_memory: dict[str, str]  # 从 history 恢复的稳定事实，如用户称呼
+    user_display_name: str  # 用户自我介绍的称呼
 
     # ── 采集完成度 ──
     hpi_complete: bool  # 现病史是否采集完整
@@ -31,8 +53,9 @@ class CardiologyState(TypedDict):
     family_premature_cad: str  # 家族早发冠心病史
 
     # ── 检查/化验 ──
-    investigation_text: str  # 用户提供的检查/化验原文
+    investigation_text: str  # 用户提供的检查/化验原文（多轮累积）
     investigation_summary: str  # 检查解读摘要
+    lab_followup_needed: bool  # 是否继续走风险分层 + 转诊（有具体报告/异常时为 True）
 
     # ── 分诊与输出 (对应 Java 返回) ──
     triage_level: str  # 分诊级别："" / green / yellow / red
@@ -45,9 +68,12 @@ class CardiologyState(TypedDict):
 
 
 def empty_cardiology_state() -> CardiologyState:
+    """新 session 的初始 state。"""
     return {
         "messages": [],
         "route": "fallback",
+        "conversation_memory": {},
+        "user_display_name": "",
         "hpi_complete": False,
         "pmh_complete": False,
         "chief_complaint": "",
@@ -67,6 +93,7 @@ def empty_cardiology_state() -> CardiologyState:
         "family_premature_cad": "",
         "investigation_text": "",
         "investigation_summary": "",
+        "lab_followup_needed": False,
         "triage_level": "",
         "clinical_impression": "",
         "management_advice": "",
