@@ -4,6 +4,33 @@
 
 历史 tag（如 `beta1.2`、`beta1.1`、`0.3`）保留作为早期里程碑，不再继续沿用。完整对照见 [docs/version-history.md](docs/version-history.md)。
 
+## [Unreleased]
+
+### Added
+
+- `graph/routing/rules.py` **纯规则路由**：图的 conditional edge 仅由 `resolve_route()` 决定（关键词 + 会话语境 + sticky）；移除 dispatch Router LLM。
+- 症状多轮：`部分缓解` 不误触 resolved；高危语境下「一定要去吗 / 能不能不去」等急诊犹豫问题走确定性 fast path，不调 LLM，不再贴首轮长问卷。
+- `tests/test_route_rules.py`、`tests/test_symptom_routing.py` 路由、symptom 兜底与高危就医确认回归测试。
+
+### Changed
+
+- dispatch：**不再调用** `prompts/llm/router_llm.py`；日志仅 `dispatch 规则路由`。
+- `resolve_route()` 永远返回合法 route（默认 `symptom`），不再返回 `None` 走 LLM。
+- LangGraph **PostgreSQL checkpointer**（`langgraph-checkpoint-postgres`），`thread_id = uid:session`，跨轮 state 持久化；删会话时 Java Feign 调 `checkpoint/delete/`。
+- `docker-compose` 增加 **PostgreSQL** 服务（本地 checkpointer 存储）。
+- Java `generalUnderstanding` **不再加载/传递 `history`**；Feign 请求体仅 `uid` / `session` / `message`。
+- ai-agent 每轮只 append 当前 `HumanMessage`，答完后 `update_state` 写入 `AIMessage`；多轮上下文从 checkpoint 恢复。
+- 移除 `conversation_memory_node`；跨轮短期上下文改为 checkpoint messages + state。
+
+### Next
+
+- **LoRA 微调**：见 [docs/lora-finetune.md](docs/lora-finetune.md)（数据 JSONL → LoRA SFT → `LLMFactory` 本地后端 A/B）。
+
+### Removed
+
+- Feign DTO 字段 `history` / `HistoryTurn`。
+- `graph/memory.py`（旧 Java history 窗口记忆抽取）。
+
 ## [0.2.0-beta.1] - 2026-06-18
 
 ### Added

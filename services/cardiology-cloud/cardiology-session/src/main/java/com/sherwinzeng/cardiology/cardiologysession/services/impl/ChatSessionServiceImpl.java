@@ -13,6 +13,8 @@ import com.sherwinzeng.cardiology.cardiologysession.entity.ChatSession;
 import com.sherwinzeng.cardiology.cardiologycloudcommondata.entity.chat.ChatSessionStatus;
 import com.sherwinzeng.cardiology.cardiologysession.repository.ChatMessageMapper;
 import com.sherwinzeng.cardiology.cardiologysession.repository.ChatSessionMapper;
+import com.sherwinzeng.cardiology.cardiologysession.feign.DRFAgentFeignClient;
+import com.sherwinzeng.cardiology.cardiologysession.request.CheckpointDeleteRequestParams;
 import com.sherwinzeng.cardiology.cardiologysession.request.CreateChatSessionRequestParams;
 import com.sherwinzeng.cardiology.cardiologysession.request.PinChatSessionRequestParams;
 import com.sherwinzeng.cardiology.cardiologysession.response.ChatSessionPageResponse;
@@ -23,12 +25,15 @@ import com.sherwinzeng.cardiology.cardiologysession.support.AuthHeaderSupport;
 import com.sherwinzeng.cardiology.cardiologysession.support.FormalChatSessionSupport;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
@@ -41,6 +46,8 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
     private final ChatSessionMapper chatSessionMapper;
     private final ChatMessageMapper chatMessageMapper;
     private final GuestChatSessionStore guestChatSessionStore;
+    private final DRFAgentFeignClient drfAgentFeignClient;
+    private final StringRedisTemplate stringRedisTemplate;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -145,21 +152,35 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
         AuthHeaderSupport.assertUidMatch(uid, authenticatedUid);
         if (AuthHeaderSupport.isGuest(userType)) {
             guestChatSessionStore.deleteSession(uid, sessionId);
-            return JsonSerialization.toJson(BaseResponse.success(null));
-        }
+        } else {
 
-        ChatSession session = chatSessionMapper.selectById(sessionId);
-        if (session == null) {
-            throw new ChatBusinessException(ResponseCode.BAD_REQUEST, "会话不存在");
+            ChatSession session = chatSessionMapper.selectById(sessionId);
+            if (session == null) {
+                throw new ChatBusinessException(ResponseCode.BAD_REQUEST, "会话不存在");
+            }
+            if (!uid.equals(session.getUid())) {
+                throw new ChatBusinessException(ResponseCode.FORBIDDEN, "无权删除该会话");
+            }
+            LambdaQueryWrapper<ChatMessage> messageQuery = new LambdaQueryWrapper<>();
+            messageQuery.eq(ChatMessage::getUid, uid).eq(ChatMessage::getSessionId, sessionId);
+            chatMessageMapper.delete(messageQuery);
+            chatSessionMapper.deleteById(sessionId);
         }
-        if (!uid.equals(session.getUid())) {
-            throw new ChatBusinessException(ResponseCode.FORBIDDEN, "无权删除该会话");
-        }
-        LambdaQueryWrapper<ChatMessage> messageQuery = new LambdaQueryWrapper<>();
-        messageQuery.eq(ChatMessage::getUid, uid).eq(ChatMessage::getSessionId, sessionId);
-        chatMessageMapper.delete(messageQuery);
-        chatSessionMapper.deleteById(sessionId);
+        deleteAiAgentCheckpoint(uid, sessionId);
         return JsonSerialization.toJson(BaseResponse.success(null));
+    }
+
+    private void deleteAiAgentCheckpoint(String uid, String sessionId) {
+        try {
+            String token = UUID.randomUUID().toString();
+            stringRedisTemplate.opsForValue().set("internal:token:" + token, "ok", 60, TimeUnit.SECONDS);
+            CheckpointDeleteRequestParams params = new CheckpointDeleteRequestParams();
+            params.setUid(uid);
+            params.setSession(sessionId);
+            drfAgentFeignClient.deleteCheckpoint(token, params);
+        } catch (Exception exception) {
+            log.warn("删除 LangGraph checkpoint 失败 | uid={} session={} err={}", uid, sessionId, exception.getMessage());
+        }
     }
 
     @Override

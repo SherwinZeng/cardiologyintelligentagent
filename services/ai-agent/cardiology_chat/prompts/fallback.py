@@ -2,6 +2,7 @@
 
 from typing import Literal
 
+from cardiology_chat.graph.state import CardiologyState
 from cardiology_chat.prompts.symptom import SYMPTOM_FOLLOW_UP
 
 RouteKind = Literal["greeting", "symptom", "fallback", "default"]
@@ -39,6 +40,32 @@ MEDICAL_DISCLAIMER_SHORT = (
 RECALL_QUESTION_MARKERS = (
     "记得", "还记得", "叫什么", "名字", "我是谁", "我叫什么",
     "我怎么了", "哪里疼", "哪里痛", "哪里不舒服",
+)
+
+ER_DOUBT_MARKERS = (
+    "一定要去", "必须去", "要不要去", "需不需要去", "能不能不去",
+    "可以不", "还去吗", "现在去吗", "非去不可", "真的要去",
+)
+
+ER_DOUBT_RED_FALLBACK = (
+    "我理解您想确认一下是否一定要现在去急诊 🌸\n\n"
+    "您前面提到的是**突然出现**的**压榨样**不适——即使现在有所减轻，"
+    "仍可能是心肌缺血等需要尽快排查的情况；"
+    "很多急症在发作间期症状会暂时减轻，但风险并未消失。\n\n"
+    "因此仍建议您**尽快**到就近医院急诊或心内科评估（心电图、心肌酶等），"
+    "不要因「现在好多了」而完全放心。可以请家人陪同或拨打 120，**不要自行驾车**。\n\n"
+    "若途中再次胸痛、大汗、气短或晕厥感，请立即呼叫急救。"
+)
+
+ER_DOUBT_RED_ADVICE = (
+    "建议现在就去急诊或拨打 120；请家人陪同，保持安静休息，"
+    "不要自行驾车。到院后重点排查心电图和心肌酶。"
+)
+
+RED_FLAG_ONGOING_FALLBACK = (
+    "我注意到您仍在就刚才的不适继续沟通 🌸 "
+    "基于您前面描述的情况，仍建议尽快到医院做心血管评估，不要独自硬撑。"
+    "若您还有疑问（例如是否必须急诊、途中注意事项），可以直接告诉我，我会结合上文说明。"
 )
 
 UNKNOWN_RECALL_FALLBACK = (
@@ -102,11 +129,34 @@ def _greeting_static_impression(text: str) -> str:
     return GREETING_RESPONSE
 
 
-def resolve_static_impression(user_text: str, route: RouteKind) -> str:
+def is_er_doubt_question(text: str) -> bool:
+    return any(marker in text for marker in ER_DOUBT_MARKERS)
+
+
+def resolve_symptom_static_impression(state: CardiologyState, user_text: str) -> str:
+    """症状节点 LLM 全挂时的兜底：高危语境下禁止退回首轮长问卷。"""
+    high_risk = state.get("red_flag_suspected") or state.get("triage_level") == "red"
+    if high_risk:
+        if is_er_doubt_question(user_text):
+            return ER_DOUBT_RED_FALLBACK
+        return RED_FLAG_ONGOING_FALLBACK
+    if is_recall_question(user_text):
+        return UNKNOWN_RECALL_FALLBACK
+    return SYMPTOM_FOLLOW_UP
+
+
+def resolve_static_impression(
+    user_text: str,
+    route: RouteKind,
+    *,
+    state: CardiologyState | None = None,
+) -> str:
     """LLM 调用全部失败时的主回复兜底；不猜回忆类答案。"""
     if route == "greeting":
         return _greeting_static_impression(user_text)
     if route == "symptom":
+        if state is not None:
+            return resolve_symptom_static_impression(state, user_text)
         return UNKNOWN_RECALL_FALLBACK if is_recall_question(user_text) else SYMPTOM_FOLLOW_UP
     if route == "fallback":
         return GENERIC_RECEIVED_FALLBACK

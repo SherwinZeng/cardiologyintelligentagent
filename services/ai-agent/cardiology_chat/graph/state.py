@@ -3,8 +3,7 @@
 所有节点读写的字段定义在这里。节点函数返回 dict，LangGraph 会 merge 进 state。
 
 字段分区：
-  - conversation_memory 对话事实（每轮从 Java history 恢复）
-  - messages / route     对话与路由
+  - user_display_name  用户称呼（checkpointer 持久化；greeting 写入）
   - hpi_* / pmh_*        采集中间结果（现病史 / 既往史）
   - investigation_*      检查解读上下文
   - triage_level 等四件套  最终输出，映射到 Java GeneralUnderstandingResponse：
@@ -26,7 +25,7 @@ class CardiologyState(TypedDict):
     route: Literal["symptom", "history", "lab", "medication", "greeting", "fallback"]
 
     # ── 对话事实记忆 ──
-    conversation_memory: dict[str, str]  # 从 history 恢复的稳定事实，如用户称呼
+    conversation_memory: dict[str, str]  # checkpointer 跨轮恢复的稳定事实，如用户称呼
     user_display_name: str  # 用户自我介绍的称呼
 
     # ── 采集完成度 ──

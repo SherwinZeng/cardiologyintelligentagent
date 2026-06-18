@@ -29,7 +29,7 @@ def run_standard_conversation_node(
         required_keys=required_keys,
         use_conversation_rules=True,
     )
-    static_impression = impression_fallback or resolve_static_impression(user_text, route)
+    static_impression = impression_fallback or resolve_static_impression(user_text, route, state=state)
     return build_standard_llm_fields(
         llm_data,
         triage_fallback=triage_fallback,

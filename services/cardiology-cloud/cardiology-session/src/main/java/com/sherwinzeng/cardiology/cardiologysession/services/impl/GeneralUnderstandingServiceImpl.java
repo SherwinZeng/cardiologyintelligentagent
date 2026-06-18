@@ -35,9 +35,6 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import java.io.IOException;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -45,11 +42,6 @@ import java.util.concurrent.TimeUnit;
 @Service
 @RequiredArgsConstructor
 public class GeneralUnderstandingServiceImpl implements GeneralUnderstandingService {
-
-    /** 传给 ai-agent 的最近 message 条数（user + assistant 合计） */
-    private static final int MEMORY_WINDOW_MESSAGES = 12;
-    /** assistant 写入 history 时的最大字符数，避免单条长回复挤掉早期 user 消息 */
-    private static final int HISTORY_ASSISTANT_MAX_CHARS = 480;
 
     private final DRFAgentFeignClient drfAgentFeignClient;
     private final StringRedisTemplate stringRedisTemplate;
@@ -68,19 +60,15 @@ public class GeneralUnderstandingServiceImpl implements GeneralUnderstandingServ
             stringRedisTemplate.opsForValue().set("internal:token:" + token, "ok", 60, TimeUnit.SECONDS);
             ChatMessage humanMessage = null;
             if (AuthHeaderSupport.isGuest(userType)) {
-                String uid = generalUnderstandingRequestParams.getUid();
-                String sessionId = generalUnderstandingRequestParams.getSession();
-                generalUnderstandingRequestParams.setHistory(
-                        loadGuestHistory(uid, sessionId, MEMORY_WINDOW_MESSAGES)
+                guestChatSessionStore.appendUserMessage(
+                        generalUnderstandingRequestParams.getUid(),
+                        generalUnderstandingRequestParams.getSession(),
+                        generalUnderstandingRequestParams.getMessage()
                 );
-                log.info("guest history loaded | uid={} session={} turns={}",
-                        uid, sessionId, generalUnderstandingRequestParams.getHistory().size());
-                guestChatSessionStore.appendUserMessage(uid, sessionId, generalUnderstandingRequestParams.getMessage());
             } else {
                 String uid = generalUnderstandingRequestParams.getUid();
                 String sessionId = generalUnderstandingRequestParams.getSession();
                 FormalChatSessionSupport.requireOwnedActiveSession(chatSessionMapper, uid, sessionId);
-                generalUnderstandingRequestParams.setHistory(loadRecentHistory(uid, sessionId, MEMORY_WINDOW_MESSAGES));
                 humanMessage = new ChatMessage();
                 humanMessage.setSessionId(sessionId);
                 humanMessage.setUid(uid);
@@ -88,7 +76,8 @@ public class GeneralUnderstandingServiceImpl implements GeneralUnderstandingServ
                 humanMessage.setContent(generalUnderstandingRequestParams.getMessage());
                 chatMessageMapper.insert(humanMessage);
             }
-            BaseResponse<GeneralUnderstandingResponse> generalUnderstandingResponseBaseResponse = drfAgentFeignClient.generalUnderstanding(token, generalUnderstandingRequestParams);
+            BaseResponse<GeneralUnderstandingResponse> generalUnderstandingResponseBaseResponse =
+                    drfAgentFeignClient.generalUnderstanding(token, generalUnderstandingRequestParams);
             String explanation = generalUnderstandingResponseBaseResponse.getData().getExplanation();
             if (AuthHeaderSupport.isGuest(userType)) {
                 guestChatSessionStore.appendAssistantMessage(
@@ -174,51 +163,5 @@ public class GeneralUnderstandingServiceImpl implements GeneralUnderstandingServ
             log.error("session-index 消费失败 | session={} eventId={}", event.sessionId(), event.eventId(), exception);
             channel.basicNack(deliveryTag, false, true);
         }
-    }
-
-    private List<GeneralUnderstandingRequestParams.HistoryTurn> loadGuestHistory(String uid, String sessionId, int limit) {
-        List<GuestChatMessagePayload> batch = guestChatSessionStore.listMessages(uid, sessionId, null, limit);
-        if (batch.isEmpty()) {
-            return Collections.emptyList();
-        }
-        List<GeneralUnderstandingRequestParams.HistoryTurn> history = new ArrayList<>(batch.size());
-        for (GuestChatMessagePayload message : batch) {
-            history.add(toHistoryTurn(message.getRole(), message.getContent(), message.getExplanation()));
-        }
-        return history;
-    }
-
-    private List<GeneralUnderstandingRequestParams.HistoryTurn> loadRecentHistory(String uid, String sessionId, int limit) {
-        List<ChatMessage> batch = chatMessageMapper.selectRecentBySession(uid, sessionId, limit);
-        if (batch.isEmpty()) {
-            return Collections.emptyList();
-        }
-        List<ChatMessage> ordered = new ArrayList<>(batch);
-        Collections.reverse(ordered);
-        List<GeneralUnderstandingRequestParams.HistoryTurn> history = new ArrayList<>(ordered.size());
-        for (ChatMessage message : ordered) {
-            history.add(toHistoryTurn(message.getRole(), message.getContent(), message.getExplanation()));
-        }
-        return history;
-    }
-
-    private GeneralUnderstandingRequestParams.HistoryTurn toHistoryTurn(String role, String content, String explanation) {
-        GeneralUnderstandingRequestParams.HistoryTurn turn = new GeneralUnderstandingRequestParams.HistoryTurn();
-        if (ChatMessageRole.USER.equals(role)) {
-            turn.setRole("user");
-            turn.setContent(content);
-        } else {
-            turn.setRole("assistant");
-            String assistantText = explanation != null && !explanation.isBlank() ? explanation : content;
-            turn.setContent(truncateAssistantHistory(assistantText));
-        }
-        return turn;
-    }
-
-    private String truncateAssistantHistory(String content) {
-        if (content == null || content.length() <= HISTORY_ASSISTANT_MAX_CHARS) {
-            return content;
-        }
-        return content.substring(0, HISTORY_ASSISTANT_MAX_CHARS - 1) + "…";
     }
 }

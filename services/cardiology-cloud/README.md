@@ -171,6 +171,7 @@ sequenceDiagram
     end
     box rgba(249,240,255,1) ④ AI 层
         participant A as ai-agent DRF
+        participant PG as PostgreSQL
         participant L as DeepSeek Flash
     end
 
@@ -184,9 +185,11 @@ sequenceDiagram
         S->>DB: COUNT user · 写 chat_message
     end
 
-    S->>A: Feign + X-Internal-Token<br/>（附带最近 12 条 history）
-    A->>L: LangGraph 推理（无 checkpointer）
+    S->>A: Feign + X-Internal-Token<br/>{ uid, session, message }
+    A->>PG: 加载 checkpoint（thread_id）
+    A->>L: LangGraph 推理
     L-->>A: 结构化回复
+    A->>PG: 写回 checkpoint
     A-->>S: urgency / advice / ...
 
     alt guest
@@ -251,7 +254,7 @@ Lua 脚本：`resources/lua/guest_create_session.lua`、`guest_append_user_messa
 ### 环境
 
 - JDK 17、Maven 3.9+
-- MySQL 8、Redis、**RabbitMQ**、Nacos
+- MySQL 8、Redis、**PostgreSQL**（ai-agent checkpointer）、**RabbitMQ**、Nacos
 - Python `ai-agent` 已启动（`:8000`）
 
 ### 配置
@@ -446,7 +449,7 @@ mvn clean package -pl cardiology-gateway -am
 
 ### DELETE `/chat/session/v1`
 
-删除会话及其全部消息。**guest 删 Redis key；formal 物理删除 MySQL**（级联 `chat_message`）。
+删除会话及其全部消息。**guest 删 Redis key；formal 物理删除 MySQL**（级联 `chat_message`）。同时 Feign 调 ai-agent `checkpoint/delete/` 清理 LangGraph state。
 
 **参数：** `uid`、`session`
 
@@ -454,19 +457,15 @@ mvn clean package -pl cardiology-gateway -am
 
 ### POST `/chat/generalUnderstanding/v1`
 
-普通医疗对话。**guest：Redis Lua 判 30 条 user 消息后写入；formal：MySQL COUNT 后写入**。调 ai-agent 前从 Redis/MySQL 加载最近 **12 条**消息作为 `history` 传入 Feign；assistant 内容截断至 **480 字**，避免单条长回复挤掉早期 user 消息。Python 图无 checkpointer，跨轮记忆完全依赖此 `history` 窗口。
+普通医疗对话。**guest：Redis Lua 判 30 条 user 消息后写入；formal：MySQL COUNT 后写入**。Feign 仅传 `uid` / `session` / `message`；跨轮记忆由 ai-agent **PostgreSQL checkpointer** 承担（`thread_id = uid:session`）。Java 仍持久化全量消息供前端拉历史；删会话时会 Feign 调 `checkpoint/delete/` 清理 graph state。
 
-**Feign 实际请求体（节选）：**
+**Feign 请求体：**
 
 ```json
 {
   "uid": "user-001",
   "session": "session-001",
-  "message": "我哪里疼你还记得吗",
-  "history": [
-    {"role": "user", "content": "胸口闷痛怎么办"},
-    {"role": "assistant", "content": "听到您说胸口闷痛..."}
-  ]
+  "message": "我哪里疼你还记得吗"
 }
 ```
 

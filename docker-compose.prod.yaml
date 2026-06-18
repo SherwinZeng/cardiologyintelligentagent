@@ -75,6 +75,26 @@ services:
     networks:
       - cardiology-net
 
+  postgres:
+    image: docker.m.daocloud.io/library/postgres:16-alpine
+    container_name: cardiology-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-cardiology}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cardiology}
+      POSTGRES_DB: ${POSTGRES_DB:-cardiology}
+      TZ: Asia/Shanghai
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-cardiology} -d ${POSTGRES_DB:-cardiology}']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - cardiology-net
+
   nacos:
     image: nacos/nacos-server:latest
     container_name: cardiology-nacos
@@ -149,11 +169,18 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_DB: ${REDIS_DB:-0}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-cardiology}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cardiology}
+      POSTGRES_DB: ${POSTGRES_DB:-cardiology}
       LANGCHAIN_TRACING_V2: ${LANGCHAIN_TRACING_V2:-false}
       LANGCHAIN_API_KEY: ${LANGCHAIN_API_KEY:-}
       LANGCHAIN_PROJECT: ${LANGCHAIN_PROJECT:-cardiology-intelligent-agent}
     depends_on:
       redis:
+        condition: service_healthy
+      postgres:
         condition: service_healthy
     networks:
       - cardiology-net
@@ -286,6 +313,7 @@ networks:
 volumes:
   mysql-data:
   redis-data:
+  postgres-data:
   nacos-data:
   nacos-logs:
   rabbitmq-data:

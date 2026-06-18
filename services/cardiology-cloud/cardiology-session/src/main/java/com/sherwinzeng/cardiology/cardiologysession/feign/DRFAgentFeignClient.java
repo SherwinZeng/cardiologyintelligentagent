@@ -1,6 +1,7 @@
 package com.sherwinzeng.cardiology.cardiologysession.feign;
 
 import com.sherwinzeng.cardiology.cardiologycloudcommondata.response.BaseResponse;
+import com.sherwinzeng.cardiology.cardiologysession.request.CheckpointDeleteRequestParams;
 import com.sherwinzeng.cardiology.cardiologysession.request.GeneralUnderstandingRequestParams;
 import com.sherwinzeng.cardiology.cardiologysession.response.GeneralUnderstandingResponse;
 import org.springframework.cloud.openfeign.FeignClient;
@@ -16,5 +17,11 @@ public interface DRFAgentFeignClient {
     BaseResponse<GeneralUnderstandingResponse> generalUnderstanding(
             @RequestHeader("X-Internal-Token") String internalToken,
             @RequestBody GeneralUnderstandingRequestParams generalUnderstandingRequestParams
+    );
+
+    @PostMapping("checkpoint/delete/")
+    BaseResponse<Void> deleteCheckpoint(
+            @RequestHeader("X-Internal-Token") String internalToken,
+            @RequestBody CheckpointDeleteRequestParams params
     );
 }

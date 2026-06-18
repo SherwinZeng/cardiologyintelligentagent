@@ -3,8 +3,7 @@
 每轮用户消息的流转路径：
 
   START
-    → conversation_memory_node（从 Java history 恢复结构化对话事实）
-    → clinical_dispatch_node（routing/dispatch.py：LLM 意图路由）
+    → clinical_dispatch_node（纯规则意图路由）
     → 按 route 字段进入 ONE OF：
         symptom   → symptom_collection_node      → END
         history   → medical_history_inquiry_node → END
@@ -19,12 +18,12 @@
 说明：
   - lab 路径：有具体报告/异常时串联 3 节点；科普「怎么看」类单节点 END
   - 其余 route 单节点直接 END
-  - 跨轮上下文由 Java 传入 history，图本身无 checkpointer
+  - 跨轮上下文由 PostgreSQL checkpointer 持久化（thread_id = uid:session）
 """
 
 from langgraph.graph import END, START, StateGraph
 
-from cardiology_chat.graph.memory import conversation_memory_node
+from cardiology_chat.graph.checkpointer import get_checkpointer
 from cardiology_chat.graph.nodes import (
     cardiac_risk_stratification_node,
     greeting_response_node,
@@ -49,7 +48,6 @@ def route_after_lab(state: CardiologyState) -> str:
 builder = StateGraph(CardiologyState)
 
 # ── 注册所有节点（名称即 builder 内部 ID，与 conditional_edges 映射一致）──
-builder.add_node("conversation_memory_node", conversation_memory_node)
 builder.add_node("clinical_dispatch_node", clinical_dispatch_node)
 builder.add_node("symptom_collection_node", symptom_collection_node)
 builder.add_node("medical_history_inquiry_node", medical_history_inquiry_node)
@@ -60,9 +58,8 @@ builder.add_node("greeting_response_node", greeting_response_node)
 builder.add_node("medication_consultation_node", medication_consultation_node)
 builder.add_node("medical_fallback_response_node", medical_fallback_response_node)
 
-# ── 边：入口先恢复对话事实，再走 dispatch，由 state["route"] 分支 ──
-builder.add_edge(START, "conversation_memory_node")
-builder.add_edge("conversation_memory_node", "clinical_dispatch_node")
+# ── 边：dispatch 选 route，由 state["route"] 分支 ──
+builder.add_edge(START, "clinical_dispatch_node")
 builder.add_conditional_edges(
     "clinical_dispatch_node",
     route_after_dispatch,  # 读取 state["route"] 返回分支名
@@ -93,4 +90,17 @@ builder.add_edge("cardiac_risk_stratification_node", "physician_referral_node")
 builder.add_edge("physician_referral_node", END)
 builder.add_edge("medical_fallback_response_node", END)
 
-cardiology_graph = builder.compile()
+_cardiology_graph = None
+
+
+def get_cardiology_graph():
+    global _cardiology_graph
+    if _cardiology_graph is None:
+        _cardiology_graph = builder.compile(checkpointer=get_checkpointer())
+    return _cardiology_graph
+
+
+def __getattr__(name: str):
+    if name == "cardiology_graph":
+        return get_cardiology_graph()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

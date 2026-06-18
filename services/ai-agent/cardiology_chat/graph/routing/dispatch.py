@@ -1,21 +1,18 @@
-"""clinical_dispatch_node：图的第一个节点，负责意图路由。
+"""clinical_dispatch_node：图的第一个节点，纯规则意图路由（不调 LLM）。
 
 执行顺序：
   1. 空消息 → fallback
-  2. 调用 LLM Router（多轮上下文，temperature=0.1，只返回 route 字段）
-  3. LLM 失败或 route 非法 → 宽口径默认 symptom
-
-输出：{"route": "symptom|history|..."}，供 builder 的 conditional_edges 使用。
-Prompt 维护入口：prompts/llm/router_llm.py
+  2. resolve_route（规则 + 会话 sticky）
+  3. 写入 state['route'] 供 conditional_edges 分支
 """
 
-from cardiology_chat.graph.llm import invoke_llm_json, latest_user_message
+import logging
+
+from cardiology_chat.graph.llm import latest_user_message
+from cardiology_chat.graph.routing.rules import resolve_route
 from cardiology_chat.graph.state import CardiologyState
-from cardiology_chat.prompts.llm.router_llm import ROUTER_LLM_SYSTEM, VALID_ROUTES
 
-ROUTER_LLM_KEYS = ("route",)
-
-DEFAULT_ROUTE = "symptom"
+logger = logging.getLogger(__name__)
 
 
 def route_after_dispatch(state: CardiologyState) -> str:
@@ -23,30 +20,12 @@ def route_after_dispatch(state: CardiologyState) -> str:
     return state["route"]
 
 
-def _normalize_route(route: str | None) -> str:
-    if route in VALID_ROUTES:
-        return route
-    return DEFAULT_ROUTE
-
-
-def _resolve_route_with_llm(state: CardiologyState) -> str:
-    llm_data = invoke_llm_json(
-        state,
-        ROUTER_LLM_SYSTEM,
-        user_text=None,
-        required_keys=ROUTER_LLM_KEYS,
-        temperature=0.1,
-    )
-    route = llm_data.get("route") if llm_data else None
-    if isinstance(route, str):
-        return _normalize_route(route.strip())
-    return DEFAULT_ROUTE
-
-
 def clinical_dispatch_node(state: CardiologyState) -> dict:
     """图入口节点：解析用户意图，写入 state['route'] 供 conditional_edges 分支。"""
     text = latest_user_message(state)
     if not text:
         return {"route": "fallback"}
-    route = _resolve_route_with_llm(state)
+
+    route = resolve_route(state)
+    logger.info("dispatch 规则路由 | route=%s text=%s", route, text[:40])
     return {"route": route}

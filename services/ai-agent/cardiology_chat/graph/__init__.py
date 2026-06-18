@@ -10,6 +10,12 @@
   nodes/       — 业务节点，按职责分 intake / diagnostics / response
 """
 
-from cardiology_chat.graph.builder import cardiology_graph
+from cardiology_chat.graph.builder import get_cardiology_graph
 
-__all__ = ["cardiology_graph"]
+__all__ = ["get_cardiology_graph", "cardiology_graph"]
+
+
+def __getattr__(name: str):
+    if name == "cardiology_graph":
+        return get_cardiology_graph()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
