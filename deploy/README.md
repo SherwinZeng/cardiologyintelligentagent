@@ -24,7 +24,7 @@ Internet :80
 └───┬──────────────────────────────────────────┘
     │
 ┌───▼──────────────────────────────────────────┐
-│ MySQL · Redis · RabbitMQ · Nacos（服务注册）   │
+│ MySQL · Redis · PostgreSQL · RabbitMQ · Nacos │
 └──────────────────────────────────────────────┘
 ```
 
@@ -44,7 +44,7 @@ git clone https://github.com/SherwinZeng/cardiologyintelligentagent.git Cardiolo
 cd CardiologyIntelligentAgent
 
 cp deploy/.env.example deploy/.env
-# 编辑 deploy/.env：MYSQL_*、JWT_SIGN_KEY、DEEPSEEK_API_KEY、ALIYUN_ACCESS_KEY_* 等
+# 编辑 deploy/.env：MYSQL_*、POSTGRES_*、JWT_SIGN_KEY、DEEPSEEK_API_KEY、ALIYUN_ACCESS_KEY_* 等
 
 chmod +x deploy/deploy.sh
 ./deploy/deploy.sh up -d --build
@@ -56,6 +56,27 @@ chmod +x deploy/deploy.sh
 
 > 首次构建 ai-agent 可能较久（Java 单次 rebuild 约 20～40 分钟）。Java 服务使用 **`SPRING_PROFILES_ACTIVE=docker`**，注册到 **Nacos**，网关通过 **`lb://`** 服务发现路由。  
 > 容器 `Up` 后网关/auth 仍可能需 **1～2 分钟** 才就绪，过早访问可能短暂 502。
+
+### 已经上线一半 / 服务器已有旧代码
+
+如果服务器已经 clone 过仓库，不要直接删数据卷；先切到要发布的分支，再重建服务：
+
+```bash
+cd ~/CardiologyIntelligentAgent
+git fetch origin
+git checkout feat/v0.3-dialogue-core
+git pull --ff-only origin feat/v0.3-dialogue-core
+
+cp -n deploy/.env.example deploy/.env
+# 重点补齐/核对：MYSQL_*、POSTGRES_*、RABBITMQ_*、JWT_SIGN_KEY、DJANGO_SECRET_KEY、DEEPSEEK_API_KEY
+
+chmod +x deploy/deploy.sh deploy/nacos-import.sh
+./deploy/nacos-import.sh
+./deploy/deploy.sh up -d --build
+./deploy/deploy.sh ps
+```
+
+这版 AI Agent 使用 PostgreSQL 保存 LangGraph checkpoint；如果旧服务器没有 `postgres` 容器，`up -d --build` 会自动创建。不要执行 `down -v`，否则会删除 MySQL/PostgreSQL 等数据卷。
 
 ### 无 Git 更新（打包上传）
 
@@ -91,7 +112,8 @@ docker tag docker.m.daocloud.io/library/redis:7.2-alpine redis:7.2-alpine
 - **首次 `up`**：`nacos-init` 容器自动把 4 份 YAML 导入 Nacos，Java 服务再启动。
 - **改配置后**：`./deploy/nacos-import.sh` 重新发布，然后重启对应 Java 服务（或 `@RefreshScope` 字段可热刷）。
 
-**`deploy/.env` 必填**：`MYSQL_*`、`RABBITMQ_*`、`JWT_SIGN_KEY`（≥32 字符）、`DEEPSEEK_API_KEY`、`ALIYUN_ACCESS_KEY_*`（短信）。  
+**`deploy/.env` 必填**：`MYSQL_*`、`POSTGRES_*`、`RABBITMQ_*`、`JWT_SIGN_KEY`（≥32 字符）、`DJANGO_SECRET_KEY`、`DEEPSEEK_API_KEY`、`ALIYUN_ACCESS_KEY_*`（短信）。
+
 Nacos YAML 里用 `${JWT_SIGN_KEY}`、`${SPRING_DATASOURCE_URL}` 等占位符，Docker 环境变量会填入生产值；本地未设则回退到 `127.0.0.1` 默认值。
 
 **不要**设置 `NACOS_USERNAME` / `NACOS_PASSWORD`（生产 Nacos 关闭鉴权，写了反而会 `unknown user`）。
@@ -106,6 +128,11 @@ Nacos YAML 里用 `${JWT_SIGN_KEY}`、`${SPRING_DATASOURCE_URL}` 等占位符，
 TOKEN=$(curl -s -X POST "http://<服务器IP>/api/auth/guest/login/v1" \
   -H "Content-Type: application/json" \
   -d '{"id":"guest-demo-001"}' | jq -r '.data.token')
+
+curl -X POST "http://<服务器IP>/api/chat/session/create" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"uid":"guest-demo-001","session":"session-001"}'
 
 curl -X POST "http://<服务器IP>/api/chat/generalUnderstanding/v1" \
   -H "Content-Type: application/json" \
@@ -165,7 +192,7 @@ docker compose up -d   # 根目录 docker-compose.yaml
 | 401 登录失败 | `deploy/.env` 中 `JWT_SIGN_KEY` 未改或与 gateway/auth 不一致 |
 | 短信发不出 | 配置 `ALIYUN_ACCESS_KEY_ID/SECRET` 后 rebuild auth；`docker logs cardiology-auth \| grep 短信` |
 | 前端空白 | `./deploy/deploy.sh logs frontend` |
-| AI 无响应 | `DEEPSEEK_API_KEY` |
+| AI 无响应 | 查 `DEEPSEEK_API_KEY`、`DJANGO_ALLOWED_HOSTS`、`postgres` 健康状态，以及 `./deploy/deploy.sh logs ai-agent` |
 | Java 反复重启 | `docker logs cardiology-auth`；查 MySQL 密码、fat jar |
 
 ## 相关文件
