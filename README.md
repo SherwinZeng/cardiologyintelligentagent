@@ -38,18 +38,9 @@
 
 ## 界面预览
 
-<table>
-  <tr>
-    <td align="center"><strong>欢迎页</strong></td>
-    <td align="center"><strong>登录页</strong></td>
-    <td align="center"><strong>智能问诊</strong></td>
-  </tr>
-  <tr>
-    <td><img src="docs/assets/github/welcome.png" alt="铭铭欢迎页" /></td>
-    <td><img src="docs/assets/github/login.png" alt="登录与游客入口" /></td>
-    <td><img src="docs/assets/github/chat.png" alt="智能问诊对话页" /></td>
-  </tr>
-</table>
+| 欢迎页 | 登录页 | 智能问诊 |
+|--------|--------|----------|
+| ![铭铭欢迎页](./docs/assets/github/welcome.png) | ![登录与游客入口](./docs/assets/github/login.png) | ![智能问诊对话页](./docs/assets/github/chat.png) |
 
 当前 Web 端已覆盖 **游客登录、会话管理、多轮问诊、检查术语解读、问诊记录入口** 等核心体验；移动端、多模态、指南 RAG 与支付挂号仍在路线图中。
 
