@@ -48,6 +48,12 @@ function handleSend() {
   draft.value = '';
 }
 
+function resetDraft(value = '') {
+  draft.value = value;
+}
+
+defineExpose({ resetDraft });
+
 function handleEnterKeydown(event: KeyboardEvent) {
   // IME 组字中（含中文输入法下用 Enter 确认英文/拼音）不发送
   if (event.isComposing || isComposing.value || event.keyCode === 229) {

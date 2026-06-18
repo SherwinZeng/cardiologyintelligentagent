@@ -9,6 +9,7 @@ export interface ChatMessage {
   time: string;
   urgency?: UrgencyLevel;
   animate?: boolean;
+  typing?: boolean;
   sections?: {
     analysis?: string;
     advice?: string;

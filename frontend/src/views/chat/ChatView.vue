@@ -37,7 +37,6 @@ import ChatEmptyState from './components/ChatEmptyState.vue';
 import ChatMessageBubble from './components/ChatMessageBubble.vue';
 import ChatMessageHistoryLoader from './components/ChatMessageHistoryLoader.vue';
 import ChatSessionAside from './components/ChatSessionAside.vue';
-import ChatTypingIndicator from './components/ChatTypingIndicator.vue';
 import type { ChatMessage, ChatSessionItem } from './types';
 
 const { t } = useI18n();
@@ -64,9 +63,12 @@ const loadingMessages = ref(false);
 const loadingOlderMessages = ref(false);
 const loadingSessions = ref(false);
 const suppressAutoScroll = ref(false);
+const stickToBottom = ref(true);
 const canLoadOlderMessages = ref(false);
 const messagesContainerRef = ref<HTMLElement | null>(null);
+const chatComposerRef = ref<InstanceType<typeof ChatComposer> | null>(null);
 let sessionSearchTimer: ReturnType<typeof setTimeout> | null = null;
+let programmaticScroll = false;
 
 const draftMessage = computed(() => {
   const value = route.query.message;
@@ -82,7 +84,18 @@ const showEmptyState = computed(
 );
 
 function applyScrollToContainer(element: HTMLElement) {
+  programmaticScroll = true;
   element.scrollTop = element.scrollHeight;
+  requestAnimationFrame(() => {
+    programmaticScroll = false;
+  });
+}
+
+function updateStickToBottom(container: HTMLElement) {
+  if (programmaticScroll || suppressAutoScroll.value) {
+    return;
+  }
+  stickToBottom.value = isNearBottom(container);
 }
 
 function shouldLoadOlderMessages(container: HTMLElement) {
@@ -92,11 +105,45 @@ function shouldLoadOlderMessages(container: HTMLElement) {
   return container.scrollTop <= MESSAGE_SCROLL_TOP_THRESHOLD;
 }
 
+function isNearBottom(container: HTMLElement, threshold = 160) {
+  return container.scrollHeight - container.scrollTop - container.clientHeight <= threshold
+}
+
+async function scrollToBottomIfNeeded() {
+  if (suppressAutoScroll.value || !stickToBottom.value) {
+    return;
+  }
+  const element = messagesContainerRef.value;
+  if (!element) {
+    return;
+  }
+  await scrollToBottom();
+}
+
+/** 打字机逐字输出时，仅当用户仍在底部附近才跟随滚动 */
+let typewriterScrollRaf = 0;
+function followTypewriterScroll() {
+  if (suppressAutoScroll.value || !stickToBottom.value) {
+    return;
+  }
+  if (typewriterScrollRaf !== 0) {
+    return;
+  }
+  typewriterScrollRaf = window.requestAnimationFrame(() => {
+    typewriterScrollRaf = 0;
+    const element = messagesContainerRef.value;
+    if (element) {
+      applyScrollToContainer(element);
+    }
+  });
+}
+
 async function scrollToBottom() {
   if (suppressAutoScroll.value) {
     return;
   }
 
+  stickToBottom.value = true;
   await nextTick();
   await new Promise<void>((resolve) => {
     requestAnimationFrame(() => {
@@ -122,21 +169,13 @@ async function scrollMessagesToLatest() {
 }
 
 function onMessagesLengthChange() {
-  if (suppressAutoScroll.value || loadingOlderMessages.value) {
+  if (suppressAutoScroll.value || loadingOlderMessages.value || !stickToBottom.value) {
     return;
   }
-  void scrollToBottom();
+  void scrollToBottomIfNeeded();
 }
 
-function onSendingChange(value: boolean) {
-  if (!value) {
-    return;
-  }
-  void scrollToBottom();
-}
-
-watch(() => messages.value.length, onMessagesLengthChange);
-watch(sending, onSendingChange);
+watch(() => messages.value.length, onMessagesLengthChange)
 
 function markLastAssistantAnimated() {
   for (let index = messages.value.length - 1; index >= 0; index -= 1) {
@@ -148,13 +187,15 @@ function markLastAssistantAnimated() {
   }
 }
 
-async function loadSessions(page = 1) {
+async function loadSessions(page = 1, silent = false) {
   if (!userLoginStore.id) {
-    return;
+    return
   }
 
-  sessionPage.value = page;
-  loadingSessions.value = true;
+  sessionPage.value = page
+  if (!silent) {
+    loadingSessions.value = true
+  }
 
   try {
     const keyword = searchKeyword.value.trim();
@@ -174,9 +215,11 @@ async function loadSessions(page = 1) {
     sessionTotal.value = pageData.total;
     sessionPage.value = pageData.page;
   } catch (error) {
-    ElMessage.error(getApiErrorMessage(error));
+    ElMessage.error(getApiErrorMessage(error))
   } finally {
-    loadingSessions.value = false;
+    if (!silent) {
+      loadingSessions.value = false
+    }
   }
 }
 
@@ -286,11 +329,13 @@ async function loadOlderMessages() {
 }
 
 function handleMessagesScroll(event: Event) {
+  const container = event.target as HTMLElement;
+  updateStickToBottom(container);
+
   if (!canLoadOlderMessages.value || loadingMessages.value || loadingOlderMessages.value) {
     return;
   }
 
-  const container = event.target as HTMLElement;
   if (!shouldLoadOlderMessages(container)) {
     return;
   }
@@ -431,6 +476,29 @@ async function handlePinSession(sessionId: string, pinned: boolean) {
   }
 }
 
+function buildTypingPlaceholder(): ChatMessage {
+  return {
+    id: `pending-assistant-${Date.now()}`,
+    role: 'assistant',
+    content: '',
+    time: '',
+    typing: true,
+  }
+}
+
+function replaceTypingPlaceholder(message: ChatMessage) {
+  const typingIndex = messages.value.findIndex((item) => item.typing)
+  if (typingIndex >= 0) {
+    messages.value[typingIndex] = { ...message, id: messages.value[typingIndex].id }
+    return
+  }
+  messages.value.push(message)
+}
+
+function removeTypingPlaceholder() {
+  messages.value = messages.value.filter((item) => !item.typing)
+}
+
 function buildAssistantMessage(data: IGeneralUnderstandingResponse): ChatMessage {
   return {
     id: `temp-assistant-${Date.now()}`,
@@ -471,9 +539,10 @@ async function handleSend(text: string) {
     content: trimmed,
     time: new Date().toLocaleString(),
   });
+  messages.value.push(buildTypingPlaceholder());
+  sending.value = true;
   await scrollToBottom();
 
-  sending.value = true;
   try {
     const response = await handleGeneralUnderstandingService<
       IBaseResponse<IGeneralUnderstandingResponse>
@@ -487,11 +556,12 @@ async function handleSend(text: string) {
       throw new Error(response.message || t('chat.sendFailed'));
     }
 
-    messages.value.push(buildAssistantMessage(response.data));
-    void loadSessions(1);
+    replaceTypingPlaceholder(buildAssistantMessage(response.data));
+    void loadSessions(1, true);
     await scrollToBottom();
   } catch (error) {
     messages.value = messages.value.filter((message) => message.id !== tempUserId);
+    removeTypingPlaceholder();
     ElMessage.error(getApiErrorMessage(error));
   } finally {
     sending.value = false;
@@ -512,16 +582,31 @@ async function bootstrapChatPage() {
     return;
   }
 
+  const sessionFromQuery =
+    typeof route.query.session === 'string' ? route.query.session.trim() : '';
+  const initial = draftMessage.value.trim();
+
+  if (initial) {
+    await router.replace({ name: 'chat', query: {} });
+    chatComposerRef.value?.resetDraft();
+  }
+
   await loadSessions();
 
-  const initial = draftMessage.value.trim();
   if (initial) {
-    void router.replace({ name: 'chat' });
     const sessionId = await createSession();
     if (!sessionId) {
       return;
     }
     await handleSend(initial);
+    chatComposerRef.value?.resetDraft();
+    return;
+  }
+
+  if (sessionFromQuery) {
+    await router.replace({ name: 'chat' });
+    activeSessionId.value = sessionFromQuery;
+    await loadMessages(sessionFromQuery);
     return;
   }
 
@@ -579,13 +664,18 @@ onMounted(() => {
             v-for="message in messages"
             :key="message.id"
             :message="message"
-            @typing="scrollToBottom"
+            @typing-tick="followTypewriterScroll"
+            @typing-complete="scrollToBottomIfNeeded"
           />
-          <ChatTypingIndicator v-if="sending" />
         </template>
       </div>
 
-      <ChatComposer :initial-value="draftMessage" :loading="sending" @send="handleSend" />
+      <ChatComposer
+        ref="chatComposerRef"
+        :initial-value="draftMessage"
+        :loading="sending"
+        @send="handleSend"
+      />
     </div>
   </section>
 </template>

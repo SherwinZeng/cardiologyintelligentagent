@@ -4,14 +4,11 @@ import { useI18n } from 'vue-i18n';
 
 import PrivacyShieldIcon from '@/components/icons/PrivacyShieldIcon.vue';
 
-interface PrivacySection {
-  title: string;
-  items: string[];
-}
+import { readI18nSections } from '@/utils/i18nSections';
 
 const { t, tm } = useI18n();
 
-const sections = computed(() => tm('privacyPage.sections') as PrivacySection[]);
+const sections = computed(() => readI18nSections(tm('privacyPage.sections')));
 </script>
 
 <template>

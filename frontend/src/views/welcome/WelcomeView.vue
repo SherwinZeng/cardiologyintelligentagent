@@ -49,7 +49,10 @@ const chips = computed(() => [
 ]);
 
 function applyChip(text: string) {
-  message.value = text;
+  router.push({
+    name: 'chat',
+    query: { message: text },
+  });
 }
 
 function startConsultation() {

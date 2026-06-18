@@ -15,6 +15,8 @@ defineProps<{
   page: number;
   pageSize: number;
   total: number;
+  /** 在窄屏也展示会话列表（问诊记录页需要） */
+  mobileVisible?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -50,7 +52,11 @@ function handleListClick() {
 </script>
 
 <template>
-  <aside class="chat-session-aside" aria-label="session list">
+  <aside
+    class="chat-session-aside"
+    :class="{ 'is-mobile-visible': mobileVisible }"
+    aria-label="session list"
+  >
     <div class="chat-session-aside__toolbar">
       <el-button type="primary" class="chat-session-aside__new" @click="emit('new')">
         <el-icon><Plus /></el-icon>

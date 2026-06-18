@@ -39,6 +39,8 @@
   position: relative;
   z-index: 1;
   touch-action: pan-y;
+  background: var(--bg-card);
+  border-radius: var(--radius-card);
   transition: transform 0.18s ease;
 
   &.is-dragging {
@@ -51,7 +53,7 @@
   width: 100%;
   padding: 12px;
   text-align: left;
-  background: var(--bg-card);
+  background: transparent;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-card);
   transition:
@@ -60,11 +62,11 @@
 
   &.is-active {
     background: var(--bg-session-active);
-    border-color: rgb(37 99 235 / 35%);
+    border-color: rgb(96 165 250 / 35%);
   }
 
   &.is-pinned {
-    border-color: rgb(37 99 235 / 22%);
+    border-color: rgb(96 165 250 / 22%);
   }
 }
 

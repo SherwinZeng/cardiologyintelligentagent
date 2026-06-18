@@ -15,7 +15,8 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  typing: [];
+  'typing-tick': [];
+  'typing-complete': [];
 }>();
 
 const { t } = useI18n();
@@ -25,14 +26,23 @@ const { displayedText, isTyping, start, skip } = useTypewriter({ speed: 20 });
 const isAssistant = computed(() => props.message.role === 'assistant');
 const shouldAnimate = computed(() => isAssistant.value && props.message.animate === true);
 
+const hasSectionContent = computed(() =>
+  Boolean(
+    props.message.sections?.analysis ||
+      props.message.sections?.advice ||
+      props.message.sections?.notes,
+  ),
+);
+
 const showSections = computed(() => {
-  if (!isAssistant.value || !props.message.sections) {
+  if (!isAssistant.value || !hasSectionContent.value) {
     return false;
   }
-  if (!shouldAnimate.value) {
-    return true;
+  // 主回复打字机未结束时，不展示就医建议 / 注意事项等附加块
+  if (shouldAnimate.value && isTyping.value) {
+    return false;
   }
-  return !isTyping.value;
+  return true;
 });
 
 const bubbleText = computed(() => {
@@ -46,23 +56,56 @@ const bubbleText = computed(() => {
 });
 
 watch(
-  () => [props.message.id, props.message.content, props.message.animate] as const,
-  ([, content, animate]) => {
-    if (!isAssistant.value) {
+  () => [props.message.id, props.message.content, props.message.animate, props.message.typing] as const,
+  ([, content, animate, typing]) => {
+    if (!isAssistant.value || typing) {
       return;
     }
     if (animate) {
-      start(content, () => emit('typing'));
+      start(content, () => emit('typing-tick'));
       return;
     }
     skip(content);
   },
   { immediate: true },
 );
+
+watch(isTyping, (typing, wasTyping) => {
+  if (wasTyping && !typing && shouldAnimate.value) {
+    emit('typing-complete');
+  }
+});
 </script>
 
 <template>
-  <article class="chat-message" :class="message.role === 'user' ? 'is-user' : 'is-assistant'">
+  <article
+    v-if="message.typing"
+    class="chat-message is-assistant chat-message--typing"
+    aria-live="polite"
+  >
+    <el-avatar
+      class="chat-message__avatar chat-message__avatar--assistant"
+      :size="40"
+      :src="mingmingChatAvatarUrl"
+    />
+
+    <div class="chat-message__body">
+      <header class="chat-message__meta">
+        <span class="chat-message__name">{{ t('ai.assistant') }}</span>
+      </header>
+
+      <div class="chat-message__bubble chat-message__bubble--typing">
+        <span class="chat-message__typing-dots" aria-hidden="true">
+          <span />
+          <span />
+          <span />
+        </span>
+        <span class="chat-message__typing-text">{{ t('chat.typing') }}</span>
+      </div>
+    </div>
+  </article>
+
+  <article v-else class="chat-message" :class="message.role === 'user' ? 'is-user' : 'is-assistant'">
     <el-avatar
       v-if="message.role === 'assistant'"
       class="chat-message__avatar chat-message__avatar--assistant"
@@ -82,7 +125,7 @@ watch(
           {{ message.role === 'assistant' ? t('ai.assistant') : displayName }}
         </span>
         <span
-          v-if="message.role === 'assistant' && message.urgency && showSections"
+          v-if="message.role === 'assistant' && message.urgency"
           class="chat-message__urgency"
           :class="`is-${message.urgency}`"
         >

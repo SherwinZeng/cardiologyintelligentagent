@@ -28,14 +28,6 @@ function handleLogout() {
   router.push('/');
 }
 
-function handleGoHelp() {
-  void router.push({ name: 'help' });
-}
-
-function handleGoPrivacy() {
-  void router.push({ name: 'privacy' });
-}
-
 function handleGoLogin() {
   void router.push(buildLoginRoute(route.fullPath));
 }
@@ -51,14 +43,14 @@ function handleGoLogin() {
     </div>
 
     <div class="app-header__actions">
-      <button type="button" class="app-header__link" @click="handleGoPrivacy">
+      <RouterLink :to="{ name: 'privacy' }" class="app-header__link">
         <PrivacyShieldIcon class="app-header__link-icon app-header__link-icon--privacy" />
         <span class="app-header__link-text">{{ t('nav.privacy') }}</span>
-      </button>
-      <button type="button" class="app-header__link" @click="handleGoHelp">
+      </RouterLink>
+      <RouterLink :to="{ name: 'help' }" class="app-header__link">
         <el-icon class="app-header__link-icon"><QuestionFilled /></el-icon>
         <span class="app-header__link-text">{{ t('nav.help') }}</span>
-      </button>
+      </RouterLink>
       <LocaleSwitch class="app-header__tool" />
       <ThemeSwitch class="app-header__tool" />
       <el-badge :value="3" class="app-header__badge">

@@ -3,6 +3,14 @@ import { createRouter, createWebHistory } from 'vue-router';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { useUserLoginStore } from '@/stores/login';
 import { resolvePostLoginRedirect } from '@/utils/resolveLoginRedirect';
+import AppointmentView from '@/views/appointment/AppointmentView.vue';
+import ChatView from '@/views/chat/ChatView.vue';
+import HelpView from '@/views/help/HelpView.vue';
+import LoginView from '@/views/login/LoginView.vue';
+import PrivacyView from '@/views/privacy/PrivacyView.vue';
+import RecordsView from '@/views/records/RecordsView.vue';
+import ReportsView from '@/views/reports/ReportsView.vue';
+import WelcomeView from '@/views/welcome/WelcomeView.vue';
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -10,7 +18,7 @@ const router = createRouter({
     {
       path: '/login',
       name: 'login',
-      component: () => import('@/views/login/LoginView.vue'),
+      component: LoginView,
     },
     {
       path: '/',
@@ -19,37 +27,37 @@ const router = createRouter({
         {
           path: '',
           name: 'home',
-          component: () => import('@/views/welcome/WelcomeView.vue'),
+          component: WelcomeView,
         },
         {
           path: 'chat',
           name: 'chat',
-          component: () => import('@/views/chat/ChatView.vue'),
+          component: ChatView,
         },
         {
           path: 'records',
           name: 'records',
-          component: () => import('@/views/records/RecordsView.vue'),
+          component: RecordsView,
         },
         {
           path: 'reports',
           name: 'reports',
-          component: () => import('@/views/reports/ReportsView.vue'),
+          component: ReportsView,
         },
         {
           path: 'appointment',
           name: 'appointment',
-          component: () => import('@/views/appointment/AppointmentView.vue'),
+          component: AppointmentView,
         },
         {
           path: 'help',
           name: 'help',
-          component: () => import('@/views/help/HelpView.vue'),
+          component: HelpView,
         },
         {
           path: 'privacy',
           name: 'privacy',
-          component: () => import('@/views/privacy/PrivacyView.vue'),
+          component: PrivacyView,
         },
       ],
     },

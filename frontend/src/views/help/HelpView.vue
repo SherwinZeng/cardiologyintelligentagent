@@ -5,15 +5,12 @@ import { useRouter } from 'vue-router';
 
 import mingmingWelcomeUrl from '@/assets/character/mingming-welcome-q.png';
 
-interface HelpSection {
-  title: string;
-  items: string[];
-}
+import { readI18nSections } from '@/utils/i18nSections';
 
 const { t, tm } = useI18n();
 const router = useRouter();
 
-const sections = computed(() => tm('helpPage.sections') as HelpSection[]);
+const sections = computed(() => readI18nSections(tm('helpPage.sections')));
 
 function handleStartChat() {
   void router.push({ name: 'chat' });
