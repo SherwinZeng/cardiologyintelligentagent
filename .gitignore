@@ -27,7 +27,10 @@
 # Git hooks（已不用 husky）
 .husky/
 
-**/docs/
+# Local planning docs
+/docs/beta2-plan.md
+/docs/known-issues.md
+/docs/sprint-3day-launch.md
 
 # Java / Maven / Gradle
 **/target/
