@@ -24,13 +24,11 @@ const draft = ref(props.initialValue ?? '')
 /** 中文等 IME 组字中；此期间 Enter 用于上屏，不能触发发送 */
 const isComposing = ref(false)
 
-/** 路由 query 变化时同步到输入框（如从首页带 message 进入） */
+/** 路由 query 变化时同步到输入框（清空 query 时也要清空 draft） */
 watch(
   () => props.initialValue,
   (value) => {
-    if (value) {
-      draft.value = value
-    }
+    draft.value = value ?? ''
   },
 )
 

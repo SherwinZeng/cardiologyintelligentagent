@@ -14,6 +14,7 @@ import { fetchSessionsService } from '@/services/chat/fetchSessions.ts'
 import { handleGeneralUnderstandingService } from '@/services/chat/handleGeneralUnderstanding.ts'
 import { pinSessionService } from '@/services/chat/pinSession.ts'
 import {
+  mapUrgencyLevel,
   parseMessagePageData,
   parseSessionPageData,
   toChatMessageList,
@@ -428,6 +429,21 @@ async function handlePinSession(sessionId: string, pinned: boolean) {
   }
 }
 
+function buildAssistantMessage(data: IGeneralUnderstandingResponse): ChatMessage {
+  return {
+    id: `temp-assistant-${Date.now()}`,
+    role: 'assistant',
+    content: data.explanation,
+    time: new Date().toLocaleString(),
+    urgency: mapUrgencyLevel(data.urgency),
+    sections: {
+      advice: data.advice,
+      notes: data.disclaimer,
+    },
+    animate: true,
+  }
+}
+
 async function handleSend(text: string) {
   const trimmed = text.trim()
   if (!trimmed || sending.value) {
@@ -469,24 +485,11 @@ async function handleSend(text: string) {
       throw new Error(response.message || t('chat.sendFailed'))
     }
 
-    const keptMessages: ChatMessage[] = []
-    for (const message of messages.value) {
-      if (message.id !== tempUserId) {
-        keptMessages.push(message)
-      }
-    }
-    messages.value = keptMessages
-
-    await loadMessages(sessionId, true)
-    await loadSessions(1)
+    messages.value.push(buildAssistantMessage(response.data))
+    void loadSessions(1)
+    await scrollToBottom()
   } catch (error) {
-    const keptMessages: ChatMessage[] = []
-    for (const message of messages.value) {
-      if (message.id !== tempUserId) {
-        keptMessages.push(message)
-      }
-    }
-    messages.value = keptMessages
+    messages.value = messages.value.filter((message) => message.id !== tempUserId)
     ElMessage.error(getApiErrorMessage(error))
   } finally {
     sending.value = false
@@ -511,12 +514,12 @@ async function bootstrapChatPage() {
 
   const initial = draftMessage.value.trim()
   if (initial) {
+    void router.replace({ name: 'chat' })
     const sessionId = await createSession()
     if (!sessionId) {
       return
     }
     await handleSend(initial)
-    void router.replace({ name: 'chat' })
     return
   }
 
