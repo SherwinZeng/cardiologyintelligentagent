@@ -1,3 +1,4 @@
+# 默认 fallback；业务配置以 Nacos cardiology-session-server.yaml 为准
 server:
   port: 30001
 
@@ -9,12 +10,10 @@ spring:
     url: jdbc:mysql://127.0.0.1:3306/cardiology?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
     username: cardiology
     password: cardiology
-
   data:
     redis:
       host: 127.0.0.1
       port: 6379
-
   rabbitmq:
     host: 127.0.0.1
     port: 5672
@@ -32,14 +31,12 @@ mybatis-plus:
 cardiology:
   ai-agent:
     base-url: http://127.0.0.1:8000/api/cardiology/
-
   guest:
     chat:
       key-prefix: "cardiology:guest:chat:"
       ttl-seconds: 3600
       max-sessions: 5
       max-user-messages: 30
-
   mq:
     enabled: true
     session-index:

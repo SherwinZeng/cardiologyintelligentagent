@@ -1,4 +1,7 @@
-# 本地 profile=local（默认）；Docker 生产见 application-docker.yml（profile=docker）
+# 默认 fallback；路由 / JWT / CORS 以 Nacos cardiology-gateway-server.yaml 为准
+server:
+  port: 30000
+
 spring:
   profiles:
     default: local
@@ -9,42 +12,43 @@ spring:
   cloud:
     gateway:
       globalcors:
-        add-to-simple-url-handler-mapping: true
         cors-configurations:
           '[/**]':
-            allowedOriginPatterns:
-              - "http://localhost:*"
-              - "http://127.0.0.1:*"
-            allowedMethods:
-              - GET
-              - POST
-              - PUT
-              - DELETE
-              - OPTIONS
+            allowedOriginPatterns: "*"
+            allowedMethods: "*"
             allowedHeaders: "*"
             allowCredentials: true
-            maxAge: 3600
-      default-filters:
-        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_FIRST
       discovery:
         locator:
           enabled: false
-
-server:
-  port: 30000
-
-jwt:
-  sign-key: change-me-to-the-same-value-as-auth-service
+      routes:
+        - id: cardiology-auth
+          uri: lb://cardiology-auth-server
+          predicates:
+            - Path=/auth/**
+          filters:
+            - name: Retry
+              args:
+                retries: 1
+                statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
+        - id: cardiology-session
+          uri: lb://cardiology-session-server
+          predicates:
+            - Path=/chat/**
+          filters:
+            - name: Retry
+              args:
+                retries: 1
+                statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
 
 auth:
   guest:
     key: "cardiology:guest:session:"
-    time: 3600
+
+jwt:
+  sign-key: zengxiangrui-daming-cardiology-intelligent-agent-platform
 
 cardiology:
   auth:
     exclude-paths:
-      - /auth/guest/login/**
-      - /auth/sms/login/sms/**
-      - /auth/sms/login/captcha/**
-      - /auth/sms/login/v1
+      - /auth/**

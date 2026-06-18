@@ -2,8 +2,8 @@
 # 启动: docker compose -f docker-compose.prod.yaml --env-file deploy/.env up -d --build
 # 停止: docker compose -f docker-compose.prod.yaml --env-file deploy/.env down
 #
-# Java 服务统一 SPRING_PROFILES_ACTIVE=docker → application-docker.yml
-# 生产栈默认启动 Nacos；Java 注册到 Nacos，网关 lb:// 服务发现
+# Java 服务统一 SPRING_PROFILES_ACTIVE=docker → application-docker.yml → Nacos Config
+# 生产栈默认启动 Nacos；nacos-init 导入 nacos-config/，Java 注册 + 读配置
 
 name: cardiology-prod
 
@@ -11,7 +11,6 @@ x-java-docker-env: &java_docker_env
   SPRING_PROFILES_ACTIVE: docker
   SPRING_CLOUD_NACOS_SERVER_ADDR: nacos:8848
   SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR: nacos:8848
-  SPRING_CLOUD_NACOS_CONFIG_ENABLED: 'false'
   SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
   SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
   JWT_SIGN_KEY: ${JWT_SIGN_KEY}
@@ -21,6 +20,7 @@ x-java-docker-env: &java_docker_env
   SPRING_RABBITMQ_PORT: 5672
   SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER}
   SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+  CARDIOLOGY_AI_AGENT_BASE_URL: http://ai-agent:8000/api/cardiology/
   # 注册到 Docker 网桥 IP，避免误选 127.0.0.1
   SPRING_CLOUD_INETUTILS_PREFERRED_NETWORKS: 172.
 
@@ -101,6 +101,21 @@ services:
     networks:
       - cardiology-net
 
+  nacos-init:
+    image: curlimages/curl:8.5.0
+    container_name: cardiology-nacos-init
+    restart: 'no'
+    depends_on:
+      nacos:
+        condition: service_healthy
+    volumes:
+      - ./services/cardiology-cloud/nacos-config:/nacos-config:ro
+    environment:
+      NACOS_ADDR: http://nacos:8848
+    entrypoint: ['/bin/sh', '/nacos-config/import.sh', '/nacos-config']
+    networks:
+      - cardiology-net
+
   rabbitmq:
     image: rabbitmq:3.13-management-alpine
     container_name: cardiology-rabbitmq
@@ -166,6 +181,8 @@ services:
         condition: service_healthy
       nacos:
         condition: service_healthy
+      nacos-init:
+        condition: service_completed_successfully
     networks:
       - cardiology-net
 
@@ -190,6 +207,8 @@ services:
         condition: service_healthy
       nacos:
         condition: service_healthy
+      nacos-init:
+        condition: service_completed_successfully
       ai-agent:
         condition: service_started
     networks:
@@ -215,6 +234,8 @@ services:
         condition: service_healthy
       nacos:
         condition: service_healthy
+      nacos-init:
+        condition: service_completed_successfully
     networks:
       - cardiology-net
 
@@ -232,6 +253,8 @@ services:
     depends_on:
       nacos:
         condition: service_healthy
+      nacos-init:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
       cardiology-auth:

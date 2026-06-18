@@ -1,47 +1,16 @@
 server:
   port: 30000
 
-jwt:
-  sign-key: change-me-to-the-same-value-as-auth-service
-
-auth:
-  guest:
-    key: "cardiology:guest:session:"
-    time: 3600
-
-cardiology:
-  auth:
-    exclude-paths:
-      - /auth/guest/login/**
-      - /auth/sms/login/sms/**
-      - /auth/sms/login/captcha/**
-      - /auth/sms/login/v1
-
 spring:
-  data:
-    redis:
-      host: 127.0.0.1
-      port: 6379
   cloud:
     gateway:
       globalcors:
-        add-to-simple-url-handler-mapping: true
         cors-configurations:
           '[/**]':
-            allowedOriginPatterns:
-              - "http://localhost:*"
-              - "http://127.0.0.1:*"
-            allowedMethods:
-              - GET
-              - POST
-              - PUT
-              - DELETE
-              - OPTIONS
+            allowedOriginPatterns: "*"
+            allowedMethods: "*"
             allowedHeaders: "*"
             allowCredentials: true
-            maxAge: 3600
-      default-filters:
-        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_FIRST
       discovery:
         locator:
           enabled: false
@@ -55,7 +24,6 @@ spring:
               args:
                 retries: 1
                 statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
-
         - id: cardiology-session
           uri: lb://cardiology-session-server
           predicates:
@@ -65,3 +33,15 @@ spring:
               args:
                 retries: 1
                 statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
+
+auth:
+  guest:
+    key: "cardiology:guest:session:"
+
+jwt:
+  sign-key: ${JWT_SIGN_KEY:zengxiangrui-daming-cardiology-intelligent-agent-platform}
+
+cardiology:
+  auth:
+    exclude-paths:
+      - /auth/**

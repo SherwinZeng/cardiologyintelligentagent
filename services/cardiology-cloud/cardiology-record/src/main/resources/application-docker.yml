@@ -1,21 +1,13 @@
 # Docker Compose 生产（profile: docker）
+# 业务配置来自 Nacos：cardiology-record-server.yaml
 
 spring:
+  config:
+    import: optional:nacos:${spring.application.name}.yaml
   cloud:
     nacos:
       server-addr: nacos:8848
       config:
-        enabled: false
+        enabled: true
       discovery:
         enabled: true
-  data:
-    redis:
-      host: redis
-      port: 6379
-  rabbitmq:
-    host: rabbitmq
-    port: 5672
-
-cardiology:
-  ai-agent:
-    base-url: http://ai-agent:8000/api/cardiology/

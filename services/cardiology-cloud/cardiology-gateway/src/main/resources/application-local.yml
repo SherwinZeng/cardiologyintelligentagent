@@ -1,27 +1,7 @@
-# 仅 profile=local：连接本机 Nacos + lb:// 服务发现路由
+# profile=local：连接本机 Nacos，配置以 cardiology-gateway-server.yaml 为准
 spring:
   config:
     import: optional:nacos:${spring.application.name}.yaml
   cloud:
     nacos:
       server-addr: 127.0.0.1:8848
-    gateway:
-      routes:
-        - id: cardiology-auth
-          uri: lb://cardiology-auth-server
-          predicates:
-            - Path=/auth/**
-          filters:
-            - name: Retry
-              args:
-                retries: 1
-                statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
-        - id: cardiology-session
-          uri: lb://cardiology-session-server
-          predicates:
-            - Path=/chat/**
-          filters:
-            - name: Retry
-              args:
-                retries: 1
-                statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
