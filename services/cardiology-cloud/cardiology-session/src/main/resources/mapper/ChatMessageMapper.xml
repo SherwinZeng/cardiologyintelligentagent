@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.sherwinzeng.cardiology.cardiologysession.repository.ChatMessageMapper">
+
+    <sql id="chatMessageColumns">
+        id,
+        session_id,
+        uid,
+        `role`,
+        content,
+        urgency,
+        explanation,
+        advice,
+        disclaimer,
+        created_at
+    </sql>
+
+    <!--
+      问诊记忆：取某 session 最近 N 条消息（按 id 倒序取，Service 层再 reverse 成时间正序）。
+      调用时机：insert 本轮 user 消息之前，故结果不含当前输入。
+    -->
+    <select id="selectRecentBySession"
+            resultType="com.sherwinzeng.cardiology.cardiologysession.entity.ChatMessage">
+        SELECT
+        <include refid="chatMessageColumns"/>
+        FROM chat_message
+        WHERE uid = #{uid}
+          AND session_id = #{sessionId}
+        ORDER BY id DESC
+        LIMIT #{limit}
+    </select>
+
+</mapper>

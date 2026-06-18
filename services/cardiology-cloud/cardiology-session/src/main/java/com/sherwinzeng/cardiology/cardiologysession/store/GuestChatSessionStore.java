@@ -31,16 +31,26 @@ public class GuestChatSessionStore {
 
     private static final String DEFAULT_TITLE = "新建会话";
 
-    /** Lua：会话数已满 */
+    /**
+     * Lua：会话数已满
+     */
     public static final long CODE_SESSION_LIMIT = -1L;
-    /** Lua：会话已存在 */
+    /**
+     * Lua：会话已存在
+     */
     public static final long CODE_SESSION_EXISTS = -2L;
-    /** Lua：成功 */
+    /**
+     * Lua：成功
+     */
     public static final long CODE_OK = 1L;
 
-    /** Lua：问题数已满 */
+    /**
+     * Lua：问题数已满
+     */
     public static final long CODE_MESSAGE_LIMIT = -2L;
-    /** Lua：会话不存在 */
+    /**
+     * Lua：会话不存在
+     */
     public static final long CODE_SESSION_NOT_FOUND = -3L;
 
     private final StringRedisTemplate stringRedisTemplate;
@@ -48,12 +58,8 @@ public class GuestChatSessionStore {
     private final DefaultRedisScript<Long> guestAppendUserMessageScript;
     private final GuestChatSessionProperties guestChatSessionProperties;
 
-    public GuestChatSessionStore(
-            StringRedisTemplate stringRedisTemplate,
-            @Qualifier("guestCreateSessionScript") DefaultRedisScript<Long> guestCreateSessionScript,
-            @Qualifier("guestAppendUserMessageScript") DefaultRedisScript<Long> guestAppendUserMessageScript,
-            GuestChatSessionProperties guestChatSessionProperties
-    ) {
+    public GuestChatSessionStore(StringRedisTemplate stringRedisTemplate, @Qualifier("guestCreateSessionScript") DefaultRedisScript<Long> guestCreateSessionScript,
+                                 @Qualifier("guestAppendUserMessageScript") DefaultRedisScript<Long> guestAppendUserMessageScript, GuestChatSessionProperties guestChatSessionProperties) {
         this.stringRedisTemplate = stringRedisTemplate;
         this.guestCreateSessionScript = guestCreateSessionScript;
         this.guestAppendUserMessageScript = guestAppendUserMessageScript;
@@ -66,16 +72,8 @@ public class GuestChatSessionStore {
         String msgsKey = GuestChatRedisKeys.msgsKey(guestChatSessionProperties, uid, sessionId);
         String nowTs = String.valueOf(System.currentTimeMillis());
 
-        Long code = stringRedisTemplate.execute(
-                guestCreateSessionScript,
-                List.of(indexKey, metaKey, msgsKey),
-                sessionId,
-                String.valueOf(guestChatSessionProperties.getTtlSeconds()),
-                String.valueOf(guestChatSessionProperties.getMaxSessions()),
-                nowTs,
-                DEFAULT_TITLE,
-                uid
-        );
+        Long code = stringRedisTemplate.execute(guestCreateSessionScript, List.of(indexKey, metaKey, msgsKey), sessionId, String.valueOf(guestChatSessionProperties.getTtlSeconds()), String.valueOf(guestChatSessionProperties.getMaxSessions()),
+                nowTs, DEFAULT_TITLE, uid);
 
         if (code == null) {
             throw new ChatBusinessException(ResponseCode.SERVER_ERROR, "创建会话失败，请稍后重试");
@@ -89,17 +87,13 @@ public class GuestChatSessionStore {
         if (code != CODE_OK) {
             throw new ChatBusinessException(ResponseCode.SERVER_ERROR, "创建会话失败，请稍后重试");
         }
-
         return toChatSession(uid, sessionId, stringRedisTemplate.<String, String>opsForHash().entries(metaKey));
     }
 
     public List<ChatSession> listSessions(String uid, String keyword) {
         String indexKey = GuestChatRedisKeys.indexKey(guestChatSessionProperties, uid);
         Set<String> sessionIds = stringRedisTemplate.opsForZSet().reverseRange(indexKey, 0, -1);
-        if (sessionIds == null || sessionIds.isEmpty()) {
-            return Collections.emptyList();
-        }
-
+        if (sessionIds == null || sessionIds.isEmpty()) return Collections.emptyList();
         String trimmedKeyword = StringUtils.hasText(keyword) ? keyword.trim() : null;
         List<ChatSession> sessions = new ArrayList<>();
         for (String sessionId : sessionIds) {
@@ -142,23 +136,13 @@ public class GuestChatSessionStore {
         String metaKey = GuestChatRedisKeys.metaKey(guestChatSessionProperties, uid, sessionId);
         String msgsKey = GuestChatRedisKeys.msgsKey(guestChatSessionProperties, uid, sessionId);
         long now = System.currentTimeMillis();
-
         GuestChatMessagePayload payload = new GuestChatMessagePayload();
         payload.setId(now);
         payload.setRole(ChatMessageRole.USER);
         payload.setContent(content);
         payload.setCreatedAt(now);
-
-        Long code = stringRedisTemplate.execute(
-                guestAppendUserMessageScript,
-                List.of(indexKey, metaKey, msgsKey),
-                String.valueOf(guestChatSessionProperties.getTtlSeconds()),
-                String.valueOf(guestChatSessionProperties.getMaxUserMessages()),
-                String.valueOf(now),
-                sessionId,
-                JsonSerialization.toJson(payload)
-        );
-
+        Long code = stringRedisTemplate.execute(guestAppendUserMessageScript, List.of(indexKey, metaKey, msgsKey), String.valueOf(guestChatSessionProperties.getTtlSeconds()),
+                String.valueOf(guestChatSessionProperties.getMaxUserMessages()), String.valueOf(now), sessionId, JsonSerialization.toJson(payload));
         if (code == null) {
             throw new ChatBusinessException(ResponseCode.SERVER_ERROR, "发送失败，请稍后重试");
         }
@@ -181,7 +165,6 @@ public class GuestChatSessionStore {
         if (!Boolean.TRUE.equals(stringRedisTemplate.hasKey(metaKey))) {
             throw new ChatBusinessException(ResponseCode.BAD_REQUEST, "会话不存在或已过期");
         }
-
         long now = System.currentTimeMillis();
         GuestChatMessagePayload payload = new GuestChatMessagePayload();
         payload.setId(now);
@@ -192,7 +175,6 @@ public class GuestChatSessionStore {
         payload.setAdvice(advice);
         payload.setDisclaimer(disclaimer);
         payload.setCreatedAt(now);
-
         stringRedisTemplate.opsForList().leftPush(msgsKey, JsonSerialization.toJson(payload));
         stringRedisTemplate.opsForHash().increment(metaKey, "messageCount", 1);
         String preview = buildPreview(content);
@@ -208,7 +190,6 @@ public class GuestChatSessionStore {
         if (rawMessages == null || rawMessages.isEmpty()) {
             return Collections.emptyList();
         }
-
         List<GuestChatMessagePayload> allMessages = new ArrayList<>();
         for (String raw : rawMessages) {
             GuestChatMessagePayload payload = JsonSerialization.fromJson(raw, GuestChatMessagePayload.class);
@@ -217,7 +198,6 @@ public class GuestChatSessionStore {
             }
         }
         allMessages.sort(Comparator.comparingLong(GuestChatMessagePayload::getId).reversed());
-
         List<GuestChatMessagePayload> filtered = new ArrayList<>();
         for (GuestChatMessagePayload message : allMessages) {
             if (beforeId != null && beforeId > 0 && message.getId() >= beforeId) {

@@ -1,6 +1,5 @@
 package com.sherwinzeng.cardiology.cardiologysession.services.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.rabbitmq.client.Channel;
 import com.sherwinzeng.cardiology.cardiologycloudcommondata.exception.ChatBusinessException;
 import com.sherwinzeng.cardiology.cardiologycloudcommondata.response.BaseResponse;
@@ -13,12 +12,12 @@ import com.sherwinzeng.cardiology.cardiologysession.entity.ChatSession;
 import com.sherwinzeng.cardiology.cardiologycloudcommondata.entity.chat.ChatMessageRole;
 import com.sherwinzeng.cardiology.cardiologycloudcommondata.entity.chat.ChatSessionStatus;
 import com.sherwinzeng.cardiology.cardiologysession.feign.DRFAgentFeignClient;
-import com.sherwinzeng.cardiology.cardiologysession.properties.GuestChatSessionProperties;
 import com.sherwinzeng.cardiology.cardiologysession.repository.ChatMessageMapper;
 import com.sherwinzeng.cardiology.cardiologysession.repository.ChatSessionMapper;
 import com.sherwinzeng.cardiology.cardiologysession.request.GeneralUnderstandingRequestParams;
 import com.sherwinzeng.cardiology.cardiologysession.response.GeneralUnderstandingResponse;
 import com.sherwinzeng.cardiology.cardiologysession.services.GeneralUnderstandingService;
+import com.sherwinzeng.cardiology.cardiologysession.store.GuestChatMessagePayload;
 import com.sherwinzeng.cardiology.cardiologysession.store.GuestChatSessionStore;
 import com.sherwinzeng.cardiology.cardiologysession.support.AuthHeaderSupport;
 import com.sherwinzeng.cardiology.cardiologysession.support.FormalChatSessionSupport;
@@ -36,6 +35,9 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -44,6 +46,11 @@ import java.util.concurrent.TimeUnit;
 @RequiredArgsConstructor
 public class GeneralUnderstandingServiceImpl implements GeneralUnderstandingService {
 
+    /** 传给 ai-agent 的最近 message 条数（user + assistant 合计） */
+    private static final int MEMORY_WINDOW_MESSAGES = 12;
+    /** assistant 写入 history 时的最大字符数，避免单条长回复挤掉早期 user 消息 */
+    private static final int HISTORY_ASSISTANT_MAX_CHARS = 480;
+
     private final DRFAgentFeignClient drfAgentFeignClient;
     private final StringRedisTemplate stringRedisTemplate;
     private final ChatMessageMapper chatMessageMapper;
@@ -51,50 +58,37 @@ public class GeneralUnderstandingServiceImpl implements GeneralUnderstandingServ
     private final RabbitTemplate rabbitTemplate;
     private final CardiologyMqProperties cardiologyMqProperties;
     private final GuestChatSessionStore guestChatSessionStore;
-    private final GuestChatSessionProperties guestChatSessionProperties;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public String generalUnderstanding(GeneralUnderstandingRequestParams generalUnderstandingRequestParams,
-                                       String userType,
-                                       String authenticatedUid) throws ChatBusinessException {
+    public String generalUnderstanding(GeneralUnderstandingRequestParams generalUnderstandingRequestParams, String userType, String authenticatedUid) throws ChatBusinessException {
         AuthHeaderSupport.assertUidMatch(generalUnderstandingRequestParams.getUid(), authenticatedUid);
         try {
             String token = UUID.randomUUID().toString();
             stringRedisTemplate.opsForValue().set("internal:token:" + token, "ok", 60, TimeUnit.SECONDS);
-
+            ChatMessage humanMessage = null;
             if (AuthHeaderSupport.isGuest(userType)) {
-                guestChatSessionStore.appendUserMessage(
-                        generalUnderstandingRequestParams.getUid(),
-                        generalUnderstandingRequestParams.getSession(),
-                        generalUnderstandingRequestParams.getMessage()
+                String uid = generalUnderstandingRequestParams.getUid();
+                String sessionId = generalUnderstandingRequestParams.getSession();
+                generalUnderstandingRequestParams.setHistory(
+                        loadGuestHistory(uid, sessionId, MEMORY_WINDOW_MESSAGES)
                 );
+                log.info("guest history loaded | uid={} session={} turns={}",
+                        uid, sessionId, generalUnderstandingRequestParams.getHistory().size());
+                guestChatSessionStore.appendUserMessage(uid, sessionId, generalUnderstandingRequestParams.getMessage());
             } else {
-                FormalChatSessionSupport.requireOwnedActiveSession(
-                        chatSessionMapper,
-                        generalUnderstandingRequestParams.getUid(),
-                        generalUnderstandingRequestParams.getSession()
-                );
-
-                LambdaQueryWrapper<ChatMessage> countQuery = new LambdaQueryWrapper<>();
-                countQuery.eq(ChatMessage::getUid, generalUnderstandingRequestParams.getUid())
-                        .eq(ChatMessage::getSessionId, generalUnderstandingRequestParams.getSession())
-                        .eq(ChatMessage::getRole, ChatMessageRole.USER);
-                if (chatMessageMapper.selectCount(countQuery) >= guestChatSessionProperties.getMaxUserMessages()) {
-                    throw new ChatBusinessException(ResponseCode.BAD_REQUEST, "本轮对话已达 30 个问题上限");
-                }
-
-                ChatMessage humanMessage = new ChatMessage();
-                humanMessage.setSessionId(generalUnderstandingRequestParams.getSession());
-                humanMessage.setUid(generalUnderstandingRequestParams.getUid());
+                String uid = generalUnderstandingRequestParams.getUid();
+                String sessionId = generalUnderstandingRequestParams.getSession();
+                FormalChatSessionSupport.requireOwnedActiveSession(chatSessionMapper, uid, sessionId);
+                generalUnderstandingRequestParams.setHistory(loadRecentHistory(uid, sessionId, MEMORY_WINDOW_MESSAGES));
+                humanMessage = new ChatMessage();
+                humanMessage.setSessionId(sessionId);
+                humanMessage.setUid(uid);
                 humanMessage.setRole(ChatMessageRole.USER);
                 humanMessage.setContent(generalUnderstandingRequestParams.getMessage());
                 chatMessageMapper.insert(humanMessage);
             }
-
-            BaseResponse<GeneralUnderstandingResponse> generalUnderstandingResponseBaseResponse =
-                    drfAgentFeignClient.generalUnderstanding(token, generalUnderstandingRequestParams);
-
+            BaseResponse<GeneralUnderstandingResponse> generalUnderstandingResponseBaseResponse = drfAgentFeignClient.generalUnderstanding(token, generalUnderstandingRequestParams);
             String explanation = generalUnderstandingResponseBaseResponse.getData().getExplanation();
             if (AuthHeaderSupport.isGuest(userType)) {
                 guestChatSessionStore.appendAssistantMessage(
@@ -117,20 +111,13 @@ public class GeneralUnderstandingServiceImpl implements GeneralUnderstandingServ
                 assistantMsg.setAdvice(generalUnderstandingResponseBaseResponse.getData().getAdvice());
                 assistantMsg.setDisclaimer(generalUnderstandingResponseBaseResponse.getData().getDisclaimer());
                 chatMessageMapper.insert(assistantMsg);
-
                 if (cardiologyMqProperties.isEnabled()) {
                     String preview = explanation == null || explanation.isEmpty() ? "" : explanation.length() > 80 ? explanation.substring(0, 80) + "....." : explanation;
-                    ChatMessage userMessage = chatMessageMapper.selectOne(new LambdaQueryWrapper<ChatMessage>()
-                            .eq(ChatMessage::getUid, generalUnderstandingRequestParams.getUid())
-                            .eq(ChatMessage::getSessionId, generalUnderstandingRequestParams.getSession())
-                            .eq(ChatMessage::getRole, ChatMessageRole.USER)
-                            .orderByDesc(ChatMessage::getId)
-                            .last("LIMIT 1"));
                     MessageRoundCompletedEvent event = new MessageRoundCompletedEvent(
                             UUID.randomUUID().toString(),
                             generalUnderstandingRequestParams.getSession(),
                             generalUnderstandingRequestParams.getUid(),
-                            userMessage != null ? userMessage.getId() : null,
+                            humanMessage != null ? humanMessage.getId() : null,
                             assistantMsg.getId(),
                             preview,
                             2,
@@ -147,7 +134,6 @@ public class GeneralUnderstandingServiceImpl implements GeneralUnderstandingServ
                     });
                 }
             }
-
             log.info(
                     "铭铭回答了 | uid={} session={} urgency={} explanation={}",
                     generalUnderstandingRequestParams.getUid(),
@@ -188,5 +174,51 @@ public class GeneralUnderstandingServiceImpl implements GeneralUnderstandingServ
             log.error("session-index 消费失败 | session={} eventId={}", event.sessionId(), event.eventId(), exception);
             channel.basicNack(deliveryTag, false, true);
         }
+    }
+
+    private List<GeneralUnderstandingRequestParams.HistoryTurn> loadGuestHistory(String uid, String sessionId, int limit) {
+        List<GuestChatMessagePayload> batch = guestChatSessionStore.listMessages(uid, sessionId, null, limit);
+        if (batch.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<GeneralUnderstandingRequestParams.HistoryTurn> history = new ArrayList<>(batch.size());
+        for (GuestChatMessagePayload message : batch) {
+            history.add(toHistoryTurn(message.getRole(), message.getContent(), message.getExplanation()));
+        }
+        return history;
+    }
+
+    private List<GeneralUnderstandingRequestParams.HistoryTurn> loadRecentHistory(String uid, String sessionId, int limit) {
+        List<ChatMessage> batch = chatMessageMapper.selectRecentBySession(uid, sessionId, limit);
+        if (batch.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<ChatMessage> ordered = new ArrayList<>(batch);
+        Collections.reverse(ordered);
+        List<GeneralUnderstandingRequestParams.HistoryTurn> history = new ArrayList<>(ordered.size());
+        for (ChatMessage message : ordered) {
+            history.add(toHistoryTurn(message.getRole(), message.getContent(), message.getExplanation()));
+        }
+        return history;
+    }
+
+    private GeneralUnderstandingRequestParams.HistoryTurn toHistoryTurn(String role, String content, String explanation) {
+        GeneralUnderstandingRequestParams.HistoryTurn turn = new GeneralUnderstandingRequestParams.HistoryTurn();
+        if (ChatMessageRole.USER.equals(role)) {
+            turn.setRole("user");
+            turn.setContent(content);
+        } else {
+            turn.setRole("assistant");
+            String assistantText = explanation != null && !explanation.isBlank() ? explanation : content;
+            turn.setContent(truncateAssistantHistory(assistantText));
+        }
+        return turn;
+    }
+
+    private String truncateAssistantHistory(String content) {
+        if (content == null || content.length() <= HISTORY_ASSISTANT_MAX_CHARS) {
+            return content;
+        }
+        return content.substring(0, HISTORY_ASSISTANT_MAX_CHARS - 1) + "…";
     }
 }
