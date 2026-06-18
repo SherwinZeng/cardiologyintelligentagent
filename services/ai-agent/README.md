@@ -16,7 +16,7 @@
 
 `services/ai-agent/`
 
-[简介](#简介) · [LangGraph](#langgraph-工作流) · [启动](#快速开始) · [API](#api-文档)
+[简介](#简介) · [LangGraph](#langgraph-工作流) · [多轮 LLM 统一架构](#多轮-llm-统一架构) · [graph 目录](#graph-目录导读) · [维护指南](#维护指南) · [启动](#快速开始) · [API](#api-文档)
 
 </div>
 
@@ -34,7 +34,7 @@
 - 检查 / 化验报告解读
 - 寒暄、自我介绍
 - 非心血管话题拒答
-- 多轮对话（`session` → `thread_id`）
+- 多轮对话（Java 传入 `history` 窗口，图无 checkpointer）
 - 结构化 JSON 输出
 
 > ⚠️ 仅供健康信息参考，不能替代医生诊断与处方。
@@ -94,7 +94,7 @@ flowchart LR
 | Web | Django 6.0 · DRF |
 | Agent | LangGraph · LangChain |
 | LLM | **DeepSeek V4 Flash**（文本）· **DeepSeek Pro**（推理，规划）· **通义千问 Qwen 3.7 Plus**（多模态，规划） |
-| Checkpoint | InMemorySaver（开发环境） |
+| 多轮记忆 | Java MySQL/Redis 持久化 + 每轮传入 `history`（默认最近 12 条） |
 | 鉴权 | Redis 内部 token |
 | 包管理 | Poetry |
 
@@ -102,51 +102,250 @@ flowchart LR
 
 ## LangGraph 工作流
 
+每轮用户消息的执行路径：
+
 ```mermaid
 flowchart TD
-    START --> dispatch[clinical_dispatch_node]
-    dispatch -->|symptom| symptom[symptom_collection_node]
-    dispatch -->|history| history[medical_history_inquiry_node]
-    dispatch -->|medication| medication[medication_consultation_node]
-    dispatch -->|lab| lab[lab_report_interpret_node]
-    dispatch -->|greeting| greeting[greeting_response_node]
-    dispatch -->|fallback| fallback[medical_fallback_response_node]
-    lab --> risk[cardiac_risk_stratification_node]
-    risk --> referral[physician_referral_node]
-    symptom --> END
-    history --> END
-    medication --> END
-    greeting --> END
-    referral --> END
-    fallback --> END
+    startPoint(["START"]) --> dispatch["clinical_dispatch_node<br/>意图路由 · routing/dispatch.py<br/>LLM 读完整 messages 选 route"]
+
+    dispatch -->|symptom| n_symptom["symptom_collection_node<br/>症状采集 · intake/symptom.py<br/>追问现病史 + 分诊<br/>红旗词 → 直接 red"]
+    dispatch -->|history| n_history["medical_history_inquiry_node<br/>既往史采集 · intake/history.py<br/>提取 PMH 标记 + LLM 追问"]
+    dispatch -->|medication| n_medication["medication_consultation_node<br/>用药咨询 · intake/medication.py<br/>CCB/ARB/他汀科普，不给剂量"]
+    dispatch -->|greeting| n_greeting["greeting_response_node<br/>寒暄 · response/greeting.py<br/>你好/作者/曾祥瑞彩蛋"]
+    dispatch -->|fallback| n_fallback["medical_fallback_response_node<br/>宽口径兜底 · response/fallback.py<br/>Router 判无关时仍可能答心血管"]
+    dispatch -->|lab| n_lab["lab_report_interpret_node<br/>检查解读 · diagnostics/lab.py"]
+
+    n_lab -->|needs_risk_referral| n_risk["cardiac_risk_stratification_node<br/>风险评估 · diagnostics/risk.py<br/>规则汇总 PMH + 检查，不调 LLM"]
+    n_lab -->|科普/怎么看| graphEnd(("END"))
+    n_risk --> n_referral["physician_referral_node<br/>转诊建议 · diagnostics/referral.py<br/>按 triage 拼接科室与急诊提示"]
+
+    n_symptom --> graphEnd(("END"))
+    n_history --> graphEnd
+    n_medication --> graphEnd
+    n_greeting --> graphEnd
+    n_fallback --> graphEnd
+    n_referral --> graphEnd
 ```
 
-### 分流规则
+> **说明：** `lab` 有具体报告/异常时走 risk → referral；科普「怎么看」类单节点结束。其余 route 单节点后直接 END。
 
-| 输入示例 | 路由 | 说明 |
-|----------|------|------|
-| 我胸口疼 | `symptom` | 症状采集 |
-| CCB 和 ARB 区别 / 我想知道 arb | `medication` | 用药科普 |
-| 我有高血压 | `history` | 既往史 |
-| 帮我看心电图 | `lab` | 报告解读 |
-| 你好 / 你是谁 | `greeting` | 寒暄 |
-| 无关话题 | `fallback` | 拒答 |
+### 多轮 LLM 统一架构
 
-**dispatch 原则（维护入口）：**
-
-1. **每轮先判显式意图**（用药 / 化验 / 症状等），再决定是否继续未完成的采集流程  
-2. **症状红旗**：固定急救模板仅在**本轮**出现红旗关键词时触发；用户说「不疼了 / 缓解了」则降级走 LLM  
-3. 铭铭答非所问、路由错误时，优先改 `prompts/dispatch.py` 关键词与 `graph/nodes/dispatch.py` 顺序，其次改各 node 内规则与 `prompts/llm/*`
-
-相关文件：
+所有多轮节点共用同一套管道，避免 greeting / symptom / fallback 各写各的：
 
 ```text
-cardiology_chat/prompts/dispatch.py      # 关键词表
-cardiology_chat/graph/nodes/dispatch.py  # 路由顺序
-cardiology_chat/graph/nodes/symptom.py   # 红旗 / 缓解词
-cardiology_chat/graph/nodes/medication.py
-cardiology_chat/prompts/symptom.py       # RED_FLAG / SYMPTOM_RESOLVED 词表
+Java history + message  →  state.messages（唯一事实来源）
+        ↓
+prompts/llm/shared.py     →  CONVERSATION_RULES（回忆/不知道/不猜/不贴记录，只写一次）
+        ↓
+invoke_llm_json_with_retry →  temperature 0.3 → 0.1，失败返回 {}
+        ↓
+resolve_static_impression  →  LLM 全挂时按 route 选静态兜底（不猜名字）
 ```
+
+| 模块 | 文件 | 职责 |
+|------|------|------|
+| 对话规则 | `prompts/llm/shared.py` | `with_conversation_rules()` 追加多轮规则 |
+| LLM 调用 | `graph/llm/invoke.py` | `invoke_llm_json` / `invoke_llm_json_with_retry` |
+| 多轮节点入口 | `graph/llm/conversation_node.py` | `run_standard_conversation_node()` |
+| 静态兜底 | `prompts/fallback.py` | `resolve_static_impression(user_text, route)` |
+| 消息窗口 | `graph/llm/messages.py` | user 原文；assistant 截断 480 字再送 LLM |
+
+**回忆类问题约定（LLM + 静态兜底一致）：**
+
+- 上文有明确信息且确定在问本人 → 直接回答
+- 没有 / 不确定 / 在问别人 → **诚实说不知道**，请用户补充
+- 禁止猜测、禁止罗列聊天记录、禁止无关的通用自我介绍
+
+> `lab` 分支由 LLM 字段 `needs_risk_referral` 决定：有具体报告/异常时走 risk → referral，科普「怎么看」类单节点结束。
+
+### 节点注释（逐节点说明）
+
+#### 1. `clinical_dispatch_node` — 意图路由
+
+| 项 | 说明 |
+|----|------|
+| **文件** | `graph/routing/dispatch.py` |
+| **触发** | 每轮用户消息进入图后第一个执行 |
+| **输入** | `state.messages` 完整多轮对话（Java 传入 `history` + 当前 `message`） |
+| **逻辑** | ① 空消息 → `fallback` ② 调 LLM Router（多轮模式，`temperature=0.1`）③ LLM 失败或 route 非法 → 宽口径默认 `symptom` |
+| **输出** | `{"route": "symptom\|history\|medication\|lab\|greeting\|fallback"}` |
+| **改哪里** | 路由误判 → `prompts/llm/router_llm.py`（勿再堆关键词表） |
+
+#### 2. `symptom_collection_node` — 症状采集
+
+| 项 | 说明 |
+|----|------|
+| **文件** | `graph/nodes/intake/symptom.py` |
+| **适用** | 用户描述胸痛、心悸、气短等现病史 |
+| **逻辑** | ① 用户说「缓解了」→ LLM，解除红旗锁 ② **本轮**出现红旗词 → 固定 red 模板，不调 LLM ③ 否则 `run_standard_conversation_node`（LLM + 静态兜底）④ 曾触发红旗且仍在症状语境 → 至少 yellow |
+| **输出** | `chief_complaint`、`triage_level`、`clinical_impression`、`management_advice`、`red_flag_suspected` |
+| **改哪里** | 红旗词 → `prompts/symptom.py`；回答风格 → `prompts/llm/symptom_llm.py`；多轮规则 → `prompts/llm/shared.py` |
+
+#### 3. `medical_history_inquiry_node` — 既往史采集
+
+| 项 | 说明 |
+|----|------|
+| **文件** | `graph/nodes/intake/history.py` |
+| **适用** | 用户聊高血压、糖尿病、冠心病史、吸烟、家族史等 |
+| **逻辑** | 从全对话文本规则提取 PMH 布尔标记（高血压、糖尿病…）并 merge 到 state；高风险组合 → 上调 yellow；LLM 生成追问与回复 |
+| **输出** | PMH 字段、`family_premature_cad`、`pmh_complete`、`triage_level`、回复三件套 |
+| **改哪里** | 词表/组合规则 → `prompts/history.py`；LLM → `prompts/llm/history_llm.py` |
+
+#### 4. `medication_consultation_node` — 用药咨询
+
+| 项 | 说明 |
+|----|------|
+| **文件** | `graph/nodes/intake/medication.py` |
+| **适用** | CCB、ARB、他汀、阿司匹林等用药疑问 |
+| **逻辑** | 纯 LLM 节点：`run_standard_conversation_node`；科普机制、注意事项、何时复诊；**不推荐具体剂量** |
+| **输出** | `triage_level`（通常 green）、`clinical_impression`、`management_advice`、`medical_disclaimer` |
+| **改哪里** | `prompts/llm/medication_llm.py` |
+
+#### 5. `greeting_response_node` — 寒暄与元对话
+
+| 项 | 说明 |
+|----|------|
+| **文件** | `graph/nodes/response/greeting.py` |
+| **适用** | 你好、你是谁、作者是谁、曾祥瑞彩蛋、「你喜欢谁」等 |
+| **逻辑** | `run_standard_conversation_node`（读 `state.messages`）；LLM 失败 → `prompts/fallback.py` 按 route 静态兜底（含作者/彩蛋） |
+| **输出** | 通常 `triage_level=green`，友好介绍 + 引导回心血管话题 |
+| **改哪里** | `prompts/llm/greeting_llm.py`；静态兜底 → `prompts/fallback.py` |
+
+#### 6. `medical_fallback_response_node` — 宽口径兜底
+
+| 项 | 说明 |
+|----|------|
+| **文件** | `graph/nodes/response/fallback.py` |
+| **适用** | Router 认为明显非心血管时进入 |
+| **逻辑** | `invoke_llm_json_with_retry` + 宽口径 Prompt；`is_off_topic=true` → 温和拒答；否则仍尝试答心血管 |
+| **输出** | `triage_level=green` + 拒答或宽口径回答 |
+| **改哪里** | `prompts/llm/fallback_llm.py`；静态兜底 → `prompts/fallback.py` |
+
+#### 7. `lab_report_interpret_node` — 检查/化验解读（流水线 ①）
+
+| 项 | 说明 |
+|----|------|
+| **文件** | `graph/nodes/diagnostics/lab.py` |
+| **适用** | 化验单、心电图、超声、CTA 报告；术语科普（QRS、ST 段等） |
+| **逻辑** | ① 全对话含危急关键词 → 固定 red ② 否则 LLM 解读，写入 `investigation_summary`；LLM 返回 `needs_risk_referral=false`（科普/无具体报告）→ 单节点结束，不跑 risk/referral |
+| **输出** | `investigation_text`、`investigation_summary`、`lab_followup_needed`、分诊与回复 |
+| **改哪里** | 危急词 → `prompts/lab.py`；解读 Prompt → `prompts/llm/lab_llm.py`；条件边 → `graph/builder.py` |
+
+#### 8. `cardiac_risk_stratification_node` — 风险评估（流水线 ②）
+
+| 项 | 说明 |
+|----|------|
+| **文件** | `graph/nodes/diagnostics/risk.py` |
+| **适用** | 仅 `lab` 路径且 `lab_followup_needed=true` 时执行 |
+| **逻辑** | **不调 LLM**；汇总 PMH 标记 + `investigation_summary` + `red_flag_suspected`，规则评估风险等级并可能上调 `triage_level` |
+| **输出** | 追加风险摘要到 `clinical_impression`，追加分层建议到 `management_advice` |
+| **改哪里** | `prompts/risk.py`（模板与分层文案） |
+
+#### 9. `physician_referral_node` — 转诊建议（流水线 ③）
+
+| 项 | 说明 |
+|----|------|
+| **文件** | `graph/nodes/diagnostics/referral.py` |
+| **适用** | 仅 `lab` 路径且 `lab_followup_needed=true` 时最后一步 |
+| **逻辑** | **不调 LLM**；按 `triage_level` 拼接推荐科室、 urgency、何时去急诊 |
+| **输出** | 追加转诊文案到 `management_advice` |
+| **改哪里** | `prompts/referral.py` |
+
+### 意图路由（纯 LLM）
+
+| 层级 | 机制 | 说明 |
+|------|------|------|
+| 1 | **LLM 路由器** | `prompts/llm/router_llm.py` + `invoke_llm_json(user_text=None)`：读完整 `messages` 语义选 route |
+| 2 | **宽口径默认** | LLM 调用失败或返回非法 route → 默认 `symptom`（不用关键词表猜意图） |
+| 3 | **上下文追问** | 「记得吗」「哪里疼」等须结合上文；Router / Symptom Prompt 已约束，禁止仅看最后一句 |
+| 4 | **安全红旗** | 在 `nodes/intake/symptom.py` / `diagnostics/lab.py` 处理，不属于图的 conditional edge |
+
+---
+
+## graph 目录导读
+
+建议阅读顺序（每个文件开头有中文模块注释）：
+
+1. `graph/__init__.py` — 包入口，导出 `cardiology_graph`
+2. `graph/builder.py` — 注册节点与边，`compile()` 成可执行图
+3. `graph/state.py` — `CardiologyState` 全部字段及与 Java 返回映射
+4. `graph/routing/dispatch.py` — 每轮第一步：意图路由
+5. `graph/nodes/` — 业务节点（见下表）
+6. `graph/llm/` — 公共工具（读消息、调 Flash、解析 JSON）
+
+```text
+cardiology_chat/graph/
+├── __init__.py              # from cardiology_chat.graph import cardiology_graph
+├── builder.py               # 图编排（原 director.py）
+├── state.py                 # CardiologyState + empty_cardiology_state()
+├── utils.py                 # 兼容层 → 转发到 graph.llm
+│
+├── llm/                     # 节点共用工具
+│   ├── messages.py          # 构建 LLM 消息窗口（assistant 截断 480 字）
+│   ├── conversation_node.py # run_standard_conversation_node（greeting/symptom/medication）
+│   ├── keywords.py          # has_keyword（红旗、危急值等确定性规则）
+│   ├── json_parser.py       # 解析 LLM 返回的 JSON
+│   └── invoke.py            # invoke_llm_json / invoke_llm_json_with_retry
+│
+├── routing/                   # 意图路由层
+│   └── dispatch.py          # clinical_dispatch_node（纯 LLM 路由）
+│
+└── nodes/
+    ├── intake/              # 信息采集
+    │   ├── symptom.py       # 症状 + 红旗（RED_FLAG_KEYWORDS）
+    │   ├── history.py       # 既往史 + PMH 布尔标记提取
+    │   └── medication.py    # 用药咨询
+    ├── diagnostics/         # 检查解读（lab 路由；条件串联 risk/referral）
+    │   ├── lab.py           # 报告/术语解读；needs_risk_referral 控制后续
+    │   ├── risk.py          # 规则风险评估（不调 LLM）
+    │   └── referral.py      # 转诊模板拼接
+    └── response/            # 直接回复用户
+        ├── greeting.py      # 寒暄 / 作者彩蛋
+        └── fallback.py      # 宽口径兜底（Router 判无关时仍可能答心血管问题）
+```
+
+### 节点与 Prompt 对应
+
+| route | 节点文件 | LLM Prompt | 静态规则/模板 |
+|-------|----------|------------|----------------|
+| `symptom` | `nodes/intake/symptom.py` | `prompts/llm/symptom_llm.py` | `prompts/symptom.py`（红旗/缓解词）+ `prompts/fallback.py` |
+| `history` | `nodes/intake/history.py` | `prompts/llm/history_llm.py` | `prompts/history.py` + `prompts/fallback.py` |
+| `medication` | `nodes/intake/medication.py` | `prompts/llm/medication_llm.py` | `prompts/medication.py` + `prompts/fallback.py` |
+| `lab` | `nodes/diagnostics/lab.py` | `prompts/llm/lab_llm.py` | `prompts/lab.py`（危急值词） |
+| `greeting` | `nodes/response/greeting.py` | `prompts/llm/greeting_llm.py` | `prompts/fallback.py`（含彩蛋） |
+| `fallback` | `nodes/response/fallback.py` | `prompts/llm/fallback_llm.py` | `prompts/fallback.py` |
+| — | `nodes/diagnostics/risk.py` | 无 | `prompts/risk.py` |
+| — | `nodes/diagnostics/referral.py` | 无 | `prompts/referral.py` |
+| 路由 | `routing/dispatch.py` | `prompts/llm/router_llm.py` | 无（失败默认 `symptom`） |
+| 多轮规则 | 各 `*_llm.py` 经 `shared.py` | `prompts/llm/shared.py` | `CONVERSATION_RULES` |
+
+### State 输出与 Java 映射
+
+| Java `GeneralUnderstandingResponse` | `CardiologyState` 字段 |
+|-------------------------------------|------------------------|
+| `urgency` | `triage_level` |
+| `explanation` | `clinical_impression` |
+| `advice` | `management_advice` |
+| `disclaimer` | `medical_disclaimer` |
+
+---
+
+## 维护指南
+
+| 现象 | 优先改 |
+|------|--------|
+| 路由误判（如 QRS 进了 fallback、「记得吗」失忆） | `prompts/llm/router_llm.py`；确认 Java 已传 `history` |
+| 进了正确 route 但答非所问 / 乱猜名字 | `prompts/llm/shared.py` + 对应 `prompts/llm/*_llm.py` |
+| 回忆类问题 LLM 全挂 | `prompts/fallback.py`（`UNKNOWN_RECALL_FALLBACK`） |
+| 铭铭回答风格/内容不对 | 对应 `prompts/llm/*_llm.py` |
+| 科普「心电图怎么看」仍跑 risk/referral | `prompts/llm/lab_llm.py` 的 `needs_risk_referral` + `graph/builder.py` 条件边 |
+| 红旗该触发没触发 | `prompts/symptom.py` + `nodes/intake/symptom.py` |
+| 检查危急值规则 | `prompts/lab.py` + `nodes/diagnostics/lab.py` |
+| 新增节点或改图结构 | `graph/builder.py` + 新建 `nodes/` 下文件 |
+| 曾祥瑞 / 寒暄彩蛋 | `prompts/fallback.py` + `prompts/llm/greeting_llm.py` |
+
+**不要**在路由层堆关键词表或手写 sticky 规则；新意图优先改 Router Prompt 或加 specialist 节点。
 
 ---
 
@@ -154,19 +353,22 @@ cardiology_chat/prompts/symptom.py       # RED_FLAG / SYMPTOM_RESOLVED 词表
 
 ```text
 services/ai-agent/
-├── configuration/              # Django 配置
+├── configuration/                 # Django settings
 ├── cardiology_chat/
-│   ├── views.py
-│   ├── urls.py
-│   ├── serializers/
-│   ├── services/chat_graph_service.py
-│   ├── graph/
-│   │   ├── director.py
-│   │   ├── state.py
-│   │   └── nodes/
-│   ├── middlewares/internal_token.py
-│   └── prompts/
-├── common/common_data/
+│   ├── views.py · urls.py
+│   ├── services/
+│   │   └── chat_graph_service.py  # invoke cardiology_graph，对外唯一入口
+│   ├── graph/                     # ← LangGraph 核心（详见上文「graph 目录导读」）
+│   ├── prompts/
+│   │   ├── llm/                   # 各节点 / Router 的 System Prompt
+│   │   │   └── shared.py          # CONVERSATION_RULES（多轮统一规则）
+│   │   └── *.py                   # 静态文案（红旗词、fallback、转诊模板等）
+│   ├── factory/LLMFactory.py      # DeepSeek Flash 实例
+│   ├── middlewares/               # X-Internal-Token 校验
+│   └── infra/redis_client.py
+├── common/
+├── tests/
+│   └── test_user_memory.py        # 多轮记忆 smoke test
 ├── .env.example
 └── manage.py
 ```
@@ -222,15 +424,20 @@ poetry run python manage.py runserver 0.0.0.0:8000
 {
   "uid": "user-001",
   "session": "session-001",
-  "message": "我胸口疼"
+  "message": "我哪里疼你还记得吗",
+  "history": [
+    {"role": "user", "content": "胸口闷痛怎么办"},
+    {"role": "assistant", "content": "听到您说胸口闷痛..."}
+  ]
 }
 ```
 
 | 字段 | 必填 | 说明 |
 |------|------|------|
 | `uid` | 是 | 用户 ID，仅做校验 |
-| `session` | 是 | 会话 ID → LangGraph `thread_id` |
-| `message` | 是 | 用户输入 |
+| `session` | 是 | 会话 ID（Java 侧持久化键；本服务不读 MySQL） |
+| `message` | 是 | 当前轮用户输入 |
+| `history` | 否 | 最近 N 轮对话（Java 从 MySQL/Redis 加载，默认 12 条）；hydrate 为 `state.messages`；assistant 内容 Java 侧截断至 480 字 |
 
 **响应：**
 
@@ -261,18 +468,41 @@ poetry run python manage.py runserver 0.0.0.0:8000
 ## 多轮对话
 
 ```python
-thread_id = session.strip()
-cardiology_graph.invoke(
-    {"messages": [HumanMessage(content=message)]},
-    config={"configurable": {"thread_id": thread_id}},
-)
+# chat_graph_service.py
+messages = []
+for turn in history or []:
+    if turn["role"] == "user":
+        messages.append(HumanMessage(content=turn["content"]))
+    elif turn["role"] == "assistant":
+        messages.append(AIMessage(content=turn["content"]))
+messages.append(HumanMessage(content=message))
+
+state = empty_cardiology_state()
+state["messages"] = messages
+cardiology_graph.invoke(state)  # 无 checkpointer
 ```
 
-- `uid`：身份校验，不参与记忆
-- `session`：多轮记忆键
-- `message`：仅传当前轮输入
+| 字段 | 作用 |
+|------|------|
+| `uid` | 身份校验，不参与记忆 |
+| `session` | Java 侧会话键（正式用户 MySQL / 访客 Redis） |
+| `history` | 每轮由 Java 加载最近窗口并传入；Python 不负责持久化 |
+| `message` | 当前轮输入，追加在 `history` 之后 |
 
-聊天记录由 Java `chat_message` 表持久化，本服务不访问 MySQL。
+图内 `clinical_state`（route、hpi_complete 等）**不跨轮持久化**；跨轮记忆完全依赖 `messages` 与 LLM 读上下文。
+
+**LLM 调用约定：**
+
+- `system` 只放角色与规则（经 `prompts/llm/shared.py` 追加多轮规则）
+- 对话内容只放在 `messages`（Java `history` + 当前 `message`），不在 system 里重复塞用户原文
+- Python `messages.py` 对 assistant 历史再截断 480 字，控制 token；user 原文保留
+
+**本地 smoke test：**
+
+```bash
+cd services/ai-agent
+poetry run pytest tests/test_user_memory.py -v
+```
 
 ---
 
@@ -303,13 +533,15 @@ Python → 校验后删除
 
 | 功能 | 状态 |
 |------|------|
-| LangGraph 分流节点 | ✅ |
+| LangGraph 纯 LLM 意图路由（无关键词边） | ✅ |
+| 多轮 LLM 统一架构（shared / conversation_node / fallback） | ✅ |
+| lab 条件流水线（科普跳过 risk/referral） | ✅ |
 | 用药咨询节点（medication） | ✅ |
-| 多轮 session | ✅ |
+| 多轮 session（Java history 窗口 + 480 字截断） | ✅ |
 | 内部 token 鉴权 | ✅ |
 | 寒暄 / 作者彩蛋 | ✅ |
-| 分流与红旗规则调优 | ✅（dispatch 顺序、本轮红旗、缓解降级） |
-| Redis Checkpoint | 📋 |
+| graph 目录分层（routing / intake / diagnostics / response） | ✅ |
+| LangGraph Checkpointer（Redis） | 📋 当前不用；记忆由 Java history 承担 |
 | reasoning / multimodal（ECG · CTA · 彩超） | 📋 |
 | SSE 流式 | 📋 |
 

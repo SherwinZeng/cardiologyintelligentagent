@@ -60,7 +60,15 @@ JDK 17 · Maven 3.9+ · Node.js 20+ · Yarn · Python 3.13+ · Poetry · Docker
 docker compose up -d
 ```
 
-启动 MySQL、Redis、Nacos 后，将 `services/cardiology-cloud/nacos-config/` 下配置文件导入 Nacos（gateway / auth / session / record）。  
+启动 MySQL、Redis、Nacos 后，导入 `services/cardiology-cloud/nacos-config/`（gateway / auth / session / record）：
+
+```bash
+# 本地 Nacos
+./services/cardiology-cloud/nacos-config/import.sh
+
+# Docker 生产（改 YAML 后）
+./deploy/nacos-import.sh
+```  
 认证服务需独立库 `cardiology-auth`（见 README）。  
 **本地**：短信在 `cardiology-auth-server.yaml` 填写 `aliyun.access-key-id` / `access-key-secret` 及 `auth.sms`。  
 **生产 Docker**：在 `deploy/.env` 配置 `ALIYUN_ACCESS_KEY_ID` / `ALIYUN_ACCESS_KEY_SECRET`（见 [deploy/README.md](deploy/README.md)）。

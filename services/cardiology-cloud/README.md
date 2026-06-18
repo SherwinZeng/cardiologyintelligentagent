@@ -184,8 +184,8 @@ sequenceDiagram
         S->>DB: COUNT user · 写 chat_message
     end
 
-    S->>A: Feign + X-Internal-Token
-    A->>L: LangGraph 推理
+    S->>A: Feign + X-Internal-Token<br/>（附带最近 12 条 history）
+    A->>L: LangGraph 推理（无 checkpointer）
     L-->>A: 结构化回复
     A-->>S: urgency / advice / ...
 
@@ -258,7 +258,7 @@ Lua 脚本：`resources/lua/guest_create_session.lua`、`guest_append_user_messa
 
 将 `nacos-config/` 下 YAML 导入 Nacos（**local** profile）。网关 `jwt.sign-key` 须与 auth 一致。
 
-**Docker 生产**（profile `docker`）不依赖 Nacos Config；路由在 `application-docker.yml`，密钥与短信 AK/SK 在 [`deploy/.env`](../../deploy/.env.example)。
+**Docker 生产**（profile `docker`）与本地相同，从 Nacos 读取 `nacos-config/*.yaml`；`deploy/.env` 通过 `${JWT_SIGN_KEY}`、`${ALIYUN_ACCESS_KEY_*}` 等占位符注入密钥。首次部署由 `nacos-init` 自动导入。
 
 **RabbitMQ 拓扑（同一 Exchange，两个 Queue，由 common-infra 在 `cardiology.mq.enabled=true` 时声明）：**
 
@@ -418,7 +418,7 @@ mvn clean package -pl cardiology-gateway -am
 | 字段 | 必填 | 说明 |
 |------|------|------|
 | `uid` | 是 | 用户 ID |
-| `session` | 是 | 客户端生成的 UUID，对应 LangGraph `thread_id` |
+| `session` | 是 | 客户端生成的 UUID；Java 侧会话持久化键（guest Redis / formal MySQL） |
 
 **响应：** `data` 为 `ChatSession` 对象（含 `sessionId`、`title`、`status` 等）。
 
@@ -454,9 +454,23 @@ mvn clean package -pl cardiology-gateway -am
 
 ### POST `/chat/generalUnderstanding/v1`
 
-普通医疗对话。**guest：Redis Lua 判 30 条 user 消息后写入；formal：MySQL COUNT 后写入**。均通过 Feign 调 ai-agent。
+普通医疗对话。**guest：Redis Lua 判 30 条 user 消息后写入；formal：MySQL COUNT 后写入**。调 ai-agent 前从 Redis/MySQL 加载最近 **12 条**消息作为 `history` 传入 Feign；assistant 内容截断至 **480 字**，避免单条长回复挤掉早期 user 消息。Python 图无 checkpointer，跨轮记忆完全依赖此 `history` 窗口。
 
-**请求体：**
+**Feign 实际请求体（节选）：**
+
+```json
+{
+  "uid": "user-001",
+  "session": "session-001",
+  "message": "我哪里疼你还记得吗",
+  "history": [
+    {"role": "user", "content": "胸口闷痛怎么办"},
+    {"role": "assistant", "content": "听到您说胸口闷痛..."}
+  ]
+}
+```
+
+**客户端请求体：**
 
 ```json
 {
@@ -469,7 +483,7 @@ mvn clean package -pl cardiology-gateway -am
 | 字段 | 必填 | 说明 |
 |------|------|------|
 | `uid` | 是 | 用户 ID |
-| `session` | 是 | 会话 ID，对应 LangGraph `thread_id` |
+| `session` | 是 | 会话 ID；Java 侧持久化键（guest Redis / formal MySQL） |
 | `message` | 是 | 用户输入 |
 
 **响应：**

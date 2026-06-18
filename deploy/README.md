@@ -81,13 +81,19 @@ docker tag docker.m.daocloud.io/library/redis:7.2-alpine redis:7.2-alpine
 
 ## 配置分层（local vs docker）
 
-| 环境 | Profile | 配置来源 | 网关路由 |
-|------|---------|----------|----------|
-| 本地 `mvn spring-boot:run` | `local`（默认） | `application.yml` + `application-local.yml` + Nacos 配置（可选） | `lb://` + Nacos 注册 |
-| Docker 生产 | `docker` | `application.yml` + `application-docker.yml` + `deploy/.env` | `lb://`（路由在 `application-docker.yml`，注册在 Nacos） |
+| 环境 | Profile | 配置来源 |
+|------|---------|----------|
+| 本地 `mvn spring-boot:run` | `local` | `application.yml` + Nacos `cardiology-*-server.yaml` |
+| Docker 生产 | `docker` | 同上；**`deploy/.env` 注入密钥**（JWT、MySQL、阿里云 AK 等占位符） |
 
-**`deploy/.env` 必填**：`MYSQL_*`、`RABBITMQ_*`、`JWT_SIGN_KEY`（≥32 字符）、`DEEPSEEK_API_KEY`。  
-**短信登录还需**：`ALIYUN_ACCESS_KEY_ID`、`ALIYUN_ACCESS_KEY_SECRET`（阿里云 RAM · [号码认证](https://dypns.console.aliyun.com/) 短信验证码 API）。可选覆盖：`AUTH_SMS_SIGN_NAME`、`AUTH_SMS_TEMPLATE_CODE`（默认 `速通互联验证码` / `100001`）。  
+**Nacos 配置仓库路径**：[`services/cardiology-cloud/nacos-config/`](../services/cardiology-cloud/nacos-config/)
+
+- **首次 `up`**：`nacos-init` 容器自动把 4 份 YAML 导入 Nacos，Java 服务再启动。
+- **改配置后**：`./deploy/nacos-import.sh` 重新发布，然后重启对应 Java 服务（或 `@RefreshScope` 字段可热刷）。
+
+**`deploy/.env` 必填**：`MYSQL_*`、`RABBITMQ_*`、`JWT_SIGN_KEY`（≥32 字符）、`DEEPSEEK_API_KEY`、`ALIYUN_ACCESS_KEY_*`（短信）。  
+Nacos YAML 里用 `${JWT_SIGN_KEY}`、`${SPRING_DATASOURCE_URL}` 等占位符，Docker 环境变量会填入生产值；本地未设则回退到 `127.0.0.1` 默认值。
+
 **不要**设置 `NACOS_USERNAME` / `NACOS_PASSWORD`（生产 Nacos 关闭鉴权，写了反而会 `unknown user`）。
 
 完整环境变量见 [`deploy/.env.example`](.env.example)。
@@ -130,10 +136,10 @@ git pull
 
 生产 **docker** profile 采用「**本地 YAML 定义路由 + Nacos 做服务注册**」：
 
-- 路由：`cardiology-gateway/.../application-docker.yml` 中 `uri: lb://cardiology-auth-server` 等
+- 路由：`nacos-config/cardiology-gateway-server.yaml`（`lb://` + Nacos 注册）
 - 注册：各 Java 服务 `discovery.enabled: true`，Compose 注入 `SPRING_CLOUD_NACOS_SERVER_ADDR=nacos:8848`
 
-未使用 Nacos Config 中心导入路由（`config.enabled: false`）。若后续要迁到 Nacos 配置中心，可将 `nacos-config/cardiology-gateway-server.yaml` 发布到 Nacos 并开启 config import。
+生产 **Java 配置统一走 Nacos Config**（与本地一致）；`application-docker.yml` 仅负责连接 Nacos。
 
 ## Nacos
 
