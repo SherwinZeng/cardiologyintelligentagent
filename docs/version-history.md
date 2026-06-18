@@ -5,9 +5,10 @@
 ## 处理原则
 
 - 不删除仓库，不重写提交历史。
-- 旧 tag 保留为历史别名，避免破坏已有链接。
+- 旧 tag 已清理，不再作为远端 tag 使用。
+- 旧 tag 名称只保留在文档映射中，用来说明早期版本对应关系。
 - README、CHANGELOG、GitHub Releases 从现在开始只使用规范版本号。
-- 后续如确实想清理 GitHub tag 页面，先创建规范 tag，再确认无引用后删除旧 tag。
+- 后续只创建 `vMAJOR.MINOR.PATCH[-beta.N]` 格式的 tag。
 
 ## 规范版本线
 
@@ -32,20 +33,15 @@ GitHub Releases 可以只发布这些规范版本：
 
 不建议每一个早期小 tag 都发 Release，否则页面会显得琐碎。
 
-## 是否删除旧 tag
+## 旧 tag 清理记录
 
-默认不删除。
+旧 tag 已决定清理，后续不再推送：
 
-如果你确实想让 GitHub tag 页面更干净，可以在确认规范 tag 已推送后，再删除旧 tag：
+- `v0.1`
+- `v0.21`
+- `0.3`
+- `beta1.0`
+- `beta1.1`
+- `beta1.2`
 
-```bash
-git tag -d v0.1 v0.21 0.3 beta1.0 beta1.1 beta1.2
-git push origin :refs/tags/v0.1
-git push origin :refs/tags/v0.21
-git push origin :refs/tags/0.3
-git push origin :refs/tags/beta1.0
-git push origin :refs/tags/beta1.1
-git push origin :refs/tags/beta1.2
-```
-
-这一步属于破坏性清理，只有在你确定不需要旧 tag 链接时再做。
+如果本地仍存在这些旧 tag，删除本地 tag 即可；推送时不要使用 `git push --tags`，避免把旧 tag 又推回 GitHub。

@@ -31,7 +31,7 @@ vMAJOR.MINOR.PATCH[-beta.N]
 | `v0.2.1` | 0.2 的补丁修复版 |
 | `v0.3.0-beta.1` | 0.3 的第一个 beta |
 
-旧 tag（`beta1.2`、`beta1.1`、`0.3` 等）默认不删除，作为历史别名保留；后续不再继续使用这种命名。历史版本对照见 [version-history.md](version-history.md)。
+旧 tag（`beta1.2`、`beta1.1`、`0.3` 等）已清理，不再继续使用这种命名。历史版本对照见 [version-history.md](version-history.md)。
 
 ## 提交信息
 
