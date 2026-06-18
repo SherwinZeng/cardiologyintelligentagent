@@ -1,9 +1,9 @@
 export class LoginServiceError extends Error {
-    code?: number
+  code?: number;
 
-    constructor(message: string, code?: number) {
-        super(message)
-        this.name = 'LoginServiceError'
-        this.code = code
-    }
+  constructor(message: string, code?: number) {
+    super(message);
+    this.name = 'LoginServiceError';
+    this.code = code;
+  }
 }

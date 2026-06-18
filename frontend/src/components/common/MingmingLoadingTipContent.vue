@@ -1,15 +1,15 @@
 <script setup lang="ts">
-import mingmingQAvatarUrl from '@/assets/character/mingming-welcome-q.png'
-import { computed } from 'vue'
-import { useI18n } from 'vue-i18n'
+import mingmingQAvatarUrl from '@/assets/character/mingming-welcome-q.png';
+import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 const props = defineProps<{
-  text?: string
-}>()
+  text?: string;
+}>();
 
-const { t } = useI18n()
+const { t } = useI18n();
 
-const displayText = computed(() => props.text?.trim() || t('sidebar.loadingTip'))
+const displayText = computed(() => props.text?.trim() || t('sidebar.loadingTip'));
 </script>
 
 <template>

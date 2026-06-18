@@ -1,17 +1,17 @@
 <script setup lang="ts">
-import { ChatDotRound, FirstAidKit, Warning } from '@element-plus/icons-vue'
-import { useI18n } from 'vue-i18n'
+import { ChatDotRound, FirstAidKit, Warning } from '@element-plus/icons-vue';
+import { useI18n } from 'vue-i18n';
 
-import logoUrl from '@/assets/brand/logo.png'
-import mingmingLoginUrl from '@/assets/character/mingming-login.png'
+import logoUrl from '@/assets/brand/logo.png';
+import mingmingLoginUrl from '@/assets/character/mingming-login.png';
 
-const { t } = useI18n()
+const { t } = useI18n();
 
 const features = [
   { key: 'consult', icon: ChatDotRound },
   { key: 'urgency', icon: Warning },
   { key: 'care', icon: FirstAidKit },
-] as const
+] as const;
 </script>
 
 <template>
@@ -30,11 +30,7 @@ const features = [
       <div class="login-page__hero-character-shell">
         <div class="login-page__hero-character-wrap">
           <div class="login-page__hero-character-aura" aria-hidden="true" />
-          <img
-            class="login-page__hero-character"
-            :src="mingmingLoginUrl"
-            alt=""
-          />
+          <img class="login-page__hero-character" :src="mingmingLoginUrl" alt="" />
         </div>
       </div>
     </div>

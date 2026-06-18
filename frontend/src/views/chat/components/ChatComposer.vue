@@ -1,60 +1,60 @@
 <script setup lang="ts">
-import { Picture, Position } from '@element-plus/icons-vue'
-import { ref, watch } from 'vue'
-import { useI18n } from 'vue-i18n'
+import { Picture, Position } from '@element-plus/icons-vue';
+import { ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 
-import MingmingLoadingTipContent from '@/components/common/MingmingLoadingTipContent.vue'
+import MingmingLoadingTipContent from '@/components/common/MingmingLoadingTipContent.vue';
 
 /** 父组件可传入预填文案，例如首页跳转 /chat?message=胸口闷 */
 const props = defineProps<{
-  initialValue?: string
-  loading?: boolean
-}>()
+  initialValue?: string;
+  loading?: boolean;
+}>();
 
 /** 仅向父组件上报「用户要发送的内容」，本组件不调用接口 */
 const emit = defineEmits<{
-  send: [text: string]
-}>()
+  send: [text: string];
+}>();
 
-const { t } = useI18n()
+const { t } = useI18n();
 
 /** 输入框双向绑定的草稿内容 */
-const draft = ref(props.initialValue ?? '')
+const draft = ref(props.initialValue ?? '');
 
 /** 中文等 IME 组字中；此期间 Enter 用于上屏，不能触发发送 */
-const isComposing = ref(false)
+const isComposing = ref(false);
 
 /** 路由 query 变化时同步到输入框（清空 query 时也要清空 draft） */
 watch(
   () => props.initialValue,
   (value) => {
-    draft.value = value ?? ''
+    draft.value = value ?? '';
   },
-)
+);
 
 /**
  * 发送入口：点击按钮或按 Enter 都会走到这里。
  * 只做校验 + 抛事件；清空输入、调 API、更新消息列表请在 ChatView / useChat 里处理。
  */
 function handleSend() {
-  const text = draft.value.trim()
+  const text = draft.value.trim();
 
   // 空内容不发送（按钮已 disabled，这里防止回车等边界情况）
   if (!text) {
-    return
+    return;
   }
 
-  emit('send', text)
-  draft.value = ''
+  emit('send', text);
+  draft.value = '';
 }
 
 function handleEnterKeydown(event: KeyboardEvent) {
   // IME 组字中（含中文输入法下用 Enter 确认英文/拼音）不发送
   if (event.isComposing || isComposing.value || event.keyCode === 229) {
-    return
+    return;
   }
-  event.preventDefault()
-  handleSend()
+  event.preventDefault();
+  handleSend();
 }
 </script>
 

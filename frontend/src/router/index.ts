@@ -1,8 +1,8 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory } from 'vue-router';
 
-import AppLayout from '@/layouts/AppLayout.vue'
-import { useUserLoginStore } from '@/stores/login'
-import { resolvePostLoginRedirect } from '@/utils/resolveLoginRedirect'
+import AppLayout from '@/layouts/AppLayout.vue';
+import { useUserLoginStore } from '@/stores/login';
+import { resolvePostLoginRedirect } from '@/utils/resolveLoginRedirect';
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -54,19 +54,19 @@ const router = createRouter({
       ],
     },
   ],
-})
+});
 
 router.beforeEach((to) => {
   if (to.name !== 'login') {
-    return true
+    return true;
   }
 
-  const loginStore = useUserLoginStore()
+  const loginStore = useUserLoginStore();
   if (!loginStore.isLoggedIn) {
-    return true
+    return true;
   }
 
-  return resolvePostLoginRedirect(to.query.redirect)
-})
+  return resolvePostLoginRedirect(to.query.redirect);
+});
 
-export default router
+export default router;

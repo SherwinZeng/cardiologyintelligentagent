@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import MingmingLoadingTipContent from '@/components/common/MingmingLoadingTipContent.vue'
-import { useI18n } from 'vue-i18n'
+import MingmingLoadingTipContent from '@/components/common/MingmingLoadingTipContent.vue';
+import { useI18n } from 'vue-i18n';
 
 defineProps<{
-  text?: string
-}>()
+  text?: string;
+}>();
 
-const { t } = useI18n()
+const { t } = useI18n();
 </script>
 
 <template>

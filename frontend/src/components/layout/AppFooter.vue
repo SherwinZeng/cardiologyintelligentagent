@@ -1,20 +1,20 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useI18n } from 'vue-i18n'
+import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 
-import { env } from '@/config/env'
+import { env } from '@/config/env';
 
-const { t } = useI18n()
+const { t } = useI18n();
 
 const copyrightText = computed(() =>
   t('footer.copyright', {
     year: new Date().getFullYear(),
     owner: env.copyrightOwner,
   }),
-)
+);
 
-const hasIcp = computed(() => Boolean(env.icpNumber))
-const hasPsb = computed(() => Boolean(env.psbNumber))
+const hasIcp = computed(() => Boolean(env.icpNumber));
+const hasPsb = computed(() => Boolean(env.psbNumber));
 </script>
 
 <template>
@@ -42,13 +42,7 @@ const hasPsb = computed(() => Boolean(env.psbNumber))
         {{ env.psbNumber }}
       </a>
 
-      <span
-        v-if="hasIcp || hasPsb"
-        class="app-footer__sep"
-        aria-hidden="true"
-      >
-        |
-      </span>
+      <span v-if="hasIcp || hasPsb" class="app-footer__sep" aria-hidden="true"> | </span>
 
       <span class="app-footer__copy">{{ copyrightText }}</span>
     </div>

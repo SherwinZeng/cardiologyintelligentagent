@@ -1,24 +1,22 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
-import en from 'element-plus/es/locale/lang/en'
-import zhCn from 'element-plus/es/locale/lang/zh-cn'
+import { computed, onMounted } from 'vue';
+import en from 'element-plus/es/locale/lang/en';
+import zhCn from 'element-plus/es/locale/lang/zh-cn';
 
-import AppFooter from '@/components/layout/AppFooter.vue'
-import AppHeader from '@/components/layout/AppHeader.vue'
-import AppSidebar from '@/components/layout/AppSidebar.vue'
-import { useLocaleStore } from '@/stores/locale'
-import { useThemeStore } from '@/stores/theme'
+import AppFooter from '@/components/layout/AppFooter.vue';
+import AppHeader from '@/components/layout/AppHeader.vue';
+import AppSidebar from '@/components/layout/AppSidebar.vue';
+import { useLocaleStore } from '@/stores/locale';
+import { useThemeStore } from '@/stores/theme';
 
-const localeStore = useLocaleStore()
-const themeStore = useThemeStore()
+const localeStore = useLocaleStore();
+const themeStore = useThemeStore();
 
-const elementLocale = computed(() =>
-  localeStore.locale === 'zh-CN' ? zhCn : en,
-)
+const elementLocale = computed(() => (localeStore.locale === 'zh-CN' ? zhCn : en));
 
 onMounted(() => {
-  themeStore.init()
-})
+  themeStore.init();
+});
 </script>
 
 <template>

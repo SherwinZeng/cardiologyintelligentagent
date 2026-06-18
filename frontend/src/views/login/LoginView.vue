@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import LoginHero from './components/LoginHero.vue'
-import LoginPanel from './components/LoginPanel.vue'
+import LoginHero from './components/LoginHero.vue';
+import LoginPanel from './components/LoginPanel.vue';
 </script>
 
 <template>

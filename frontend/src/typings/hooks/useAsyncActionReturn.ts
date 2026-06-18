@@ -1,10 +1,10 @@
-import type { Ref } from 'vue'
+import type { Ref } from 'vue';
 
 export interface IUseAsyncActionReturn {
-    loading: Ref<boolean>
-    run: <T>(
-        task: () => Promise<T>,
-        onSuccess?: (data: T) => void,
-        onError?: (error: unknown) => void,
-    ) => Promise<T | undefined>
+  loading: Ref<boolean>;
+  run: <T>(
+    task: () => Promise<T>,
+    onSuccess?: (data: T) => void,
+    onError?: (error: unknown) => void,
+  ) => Promise<T | undefined>;
 }

@@ -1,31 +1,31 @@
-import type { ChatMessage, ChatSessionItem, UrgencyLevel } from '@/views/chat/types'
-import type { IChatMessageResponse, IChatMessagePageResponse } from '@/typings/chat/message.ts'
-import type { ICreateSessionResponse, IChatSessionPageResponse } from '@/typings/chat/session.ts'
+import type { ChatMessage, ChatSessionItem, UrgencyLevel } from '@/views/chat/types';
+import type { IChatMessageResponse, IChatMessagePageResponse } from '@/typings/chat/message.ts';
+import type { ICreateSessionResponse, IChatSessionPageResponse } from '@/typings/chat/session.ts';
 
 function formatMessageTime(value: string): string {
-  const date = new Date(value)
+  const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
-    return value
+    return value;
   }
-  return date.toLocaleString()
+  return date.toLocaleString();
 }
 
 export function mapUrgencyLevel(urgency?: string | null): UrgencyLevel | undefined {
   if (!urgency) {
-    return undefined
+    return undefined;
   }
 
-  const normalized = urgency.toLowerCase()
+  const normalized = urgency.toLowerCase();
   if (normalized === 'green' || normalized === 'low') {
-    return 'low'
+    return 'low';
   }
   if (normalized === 'yellow' || normalized === 'moderate') {
-    return 'moderate'
+    return 'moderate';
   }
   if (normalized === 'red' || normalized === 'high') {
-    return 'high'
+    return 'high';
   }
-  return undefined
+  return undefined;
 }
 
 export function toSessionItem(data: ICreateSessionResponse): ChatSessionItem {
@@ -39,14 +39,14 @@ export function toSessionItem(data: ICreateSessionResponse): ChatSessionItem {
     pinned: Boolean(data.pinned),
     createdAt: data.createdAt,
     updatedAt: data.updatedAt,
-  }
+  };
 }
 
 export function parseSessionPageData(
   payload: IChatSessionPageResponse | ICreateSessionResponse[] | null | undefined,
 ): IChatSessionPageResponse {
   if (!payload) {
-    return { records: [], total: 0, page: 1, pageSize: 5, hasMore: false }
+    return { records: [], total: 0, page: 1, pageSize: 5, hasMore: false };
   }
   if (Array.isArray(payload)) {
     return {
@@ -55,7 +55,7 @@ export function parseSessionPageData(
       page: 1,
       pageSize: payload.length || 5,
       hasMore: false,
-    }
+    };
   }
   return {
     records: Array.isArray(payload.records) ? payload.records : [],
@@ -63,25 +63,27 @@ export function parseSessionPageData(
     page: payload.page ?? 1,
     pageSize: payload.pageSize ?? 5,
     hasMore: Boolean(payload.hasMore),
-  }
+  };
 }
 
-export function toSessionItemList(data: ICreateSessionResponse[] | null | undefined): ChatSessionItem[] {
+export function toSessionItemList(
+  data: ICreateSessionResponse[] | null | undefined,
+): ChatSessionItem[] {
   if (!Array.isArray(data)) {
-    return []
+    return [];
   }
-  const items: ChatSessionItem[] = []
+  const items: ChatSessionItem[] = [];
   for (const session of data) {
-    items.push(toSessionItem(session))
+    items.push(toSessionItem(session));
   }
-  return items
+  return items;
 }
 
 export function parseMessagePageData(
   payload: IChatMessagePageResponse | IChatMessageResponse[] | null | undefined,
 ): IChatMessagePageResponse {
   if (!payload) {
-    return { records: [], total: 0, pageSize: 40, hasMore: false }
+    return { records: [], total: 0, pageSize: 40, hasMore: false };
   }
   if (Array.isArray(payload)) {
     return {
@@ -89,25 +91,25 @@ export function parseMessagePageData(
       total: payload.length,
       pageSize: payload.length || 40,
       hasMore: false,
-    }
+    };
   }
   return {
     records: Array.isArray(payload.records) ? payload.records : [],
     total: payload.total ?? 0,
     pageSize: payload.pageSize ?? 40,
     hasMore: Boolean(payload.hasMore),
-  }
+  };
 }
 
 export function toChatMessageList(data: IChatMessageResponse[] | null | undefined): ChatMessage[] {
   if (!Array.isArray(data)) {
-    return []
+    return [];
   }
-  const items: ChatMessage[] = []
+  const items: ChatMessage[] = [];
   for (const item of data) {
-    items.push(toChatMessage(item))
+    items.push(toChatMessage(item));
   }
-  return items
+  return items;
 }
 
 export function toChatMessage(data: IChatMessageResponse): ChatMessage {
@@ -122,7 +124,7 @@ export function toChatMessage(data: IChatMessageResponse): ChatMessage {
         advice: data.advice ?? undefined,
         notes: data.disclaimer ?? undefined,
       },
-    }
+    };
   }
 
   return {
@@ -130,5 +132,5 @@ export function toChatMessage(data: IChatMessageResponse): ChatMessage {
     role: 'user',
     content: data.content,
     time: formatMessageTime(data.createdAt),
-  }
+  };
 }

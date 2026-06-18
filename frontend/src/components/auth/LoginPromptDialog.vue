@@ -1,40 +1,40 @@
 <script setup lang="ts">
-import { User } from '@element-plus/icons-vue'
-import { ref } from 'vue'
-import { useI18n } from 'vue-i18n'
+import { User } from '@element-plus/icons-vue';
+import { ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 
-import mingmingWelcomeUrl from '@/assets/character/mingming-welcome-q.png'
-import { useLoginPrompt } from '@/hooks/useLoginPrompt.ts'
-import { useMultiLogin } from '@/hooks/useMultiLogin.ts'
+import mingmingWelcomeUrl from '@/assets/character/mingming-welcome-q.png';
+import { useLoginPrompt } from '@/hooks/useLoginPrompt.ts';
+import { useMultiLogin } from '@/hooks/useMultiLogin.ts';
 
-const { t } = useI18n()
-const { visible, resolveLoginPrompt } = useLoginPrompt()
-const { handleGuestLogin } = useMultiLogin()
+const { t } = useI18n();
+const { visible, resolveLoginPrompt } = useLoginPrompt();
+const { handleGuestLogin } = useMultiLogin();
 
-const guestLoading = ref(false)
+const guestLoading = ref(false);
 
 function handleGoLogin() {
-  resolveLoginPrompt('login')
+  resolveLoginPrompt('login');
 }
 
 async function handleGuestTrial() {
   if (guestLoading.value) {
-    return
+    return;
   }
 
-  guestLoading.value = true
+  guestLoading.value = true;
   try {
-    const success = await handleGuestLogin({ navigate: false })
+    const success = await handleGuestLogin({ navigate: false });
     if (success) {
-      resolveLoginPrompt('guest')
+      resolveLoginPrompt('guest');
     }
   } finally {
-    guestLoading.value = false
+    guestLoading.value = false;
   }
 }
 
 function handleClose() {
-  resolveLoginPrompt('cancel')
+  resolveLoginPrompt('cancel');
 }
 </script>
 
@@ -49,11 +49,7 @@ function handleClose() {
     @close="handleClose"
   >
     <div class="login-prompt-dialog__body">
-      <img
-        class="login-prompt-dialog__avatar"
-        :src="mingmingWelcomeUrl"
-        :alt="t('ai.assistant')"
-      />
+      <img class="login-prompt-dialog__avatar" :src="mingmingWelcomeUrl" :alt="t('ai.assistant')" />
       <p class="login-prompt-dialog__message">{{ t('auth.loginPromptMessage') }}</p>
     </div>
 
@@ -63,11 +59,7 @@ function handleClose() {
           {{ t('auth.goLogin') }}
         </el-button>
 
-        <el-tooltip
-          placement="top"
-          effect="light"
-          :content="t('auth.guestTrialTip')"
-        >
+        <el-tooltip placement="top" effect="light" :content="t('auth.guestTrialTip')">
           <span class="login-prompt-dialog__guest-wrap">
             <el-button
               size="large"

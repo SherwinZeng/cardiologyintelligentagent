@@ -1,45 +1,43 @@
 <script setup lang="ts">
-import { ArrowDown, Bell, QuestionFilled } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
-import { storeToRefs } from 'pinia'
-import { computed } from 'vue'
-import { useI18n } from 'vue-i18n'
-import { useRoute, useRouter } from 'vue-router'
+import { ArrowDown, Bell, QuestionFilled } from '@element-plus/icons-vue';
+import { ElMessage } from 'element-plus';
+import { storeToRefs } from 'pinia';
+import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
+import { useRoute, useRouter } from 'vue-router';
 
-import logoUrl from '@/assets/brand/logo.png'
-import mingmingAvatarUrl from '@/assets/character/mingming-avatar.png'
-import LocaleSwitch from '@/components/common/LocaleSwitch.vue'
-import ThemeSwitch from '@/components/common/ThemeSwitch.vue'
-import PrivacyShieldIcon from '@/components/icons/PrivacyShieldIcon.vue'
-import { useUserLoginStore } from '@/stores/login'
-import { buildLoginRoute } from '@/utils/resolveLoginRedirect'
+import logoUrl from '@/assets/brand/logo.png';
+import mingmingAvatarUrl from '@/assets/character/mingming-avatar.png';
+import LocaleSwitch from '@/components/common/LocaleSwitch.vue';
+import ThemeSwitch from '@/components/common/ThemeSwitch.vue';
+import PrivacyShieldIcon from '@/components/icons/PrivacyShieldIcon.vue';
+import { useUserLoginStore } from '@/stores/login';
+import { buildLoginRoute } from '@/utils/resolveLoginRedirect';
 
-const { t } = useI18n()
-const route = useRoute()
-const router = useRouter()
-const loginStore = useUserLoginStore()
-const { displayName, userLoginStore, isLoggedIn } = storeToRefs(loginStore)
+const { t } = useI18n();
+const route = useRoute();
+const router = useRouter();
+const loginStore = useUserLoginStore();
+const { displayName, userLoginStore, isLoggedIn } = storeToRefs(loginStore);
 
-const avatarUrl = computed(
-  () => userLoginStore.value.avatar || mingmingAvatarUrl,
-)
+const avatarUrl = computed(() => userLoginStore.value.avatar || mingmingAvatarUrl);
 
 function handleLogout() {
-  loginStore.clearLogin()
-  ElMessage.success(t('user.logout'))
-  router.push('/')
+  loginStore.clearLogin();
+  ElMessage.success(t('user.logout'));
+  router.push('/');
 }
 
 function handleGoHelp() {
-  void router.push({ name: 'help' })
+  void router.push({ name: 'help' });
 }
 
 function handleGoPrivacy() {
-  void router.push({ name: 'privacy' })
+  void router.push({ name: 'privacy' });
 }
 
 function handleGoLogin() {
-  void router.push(buildLoginRoute(route.fullPath))
+  void router.push(buildLoginRoute(route.fullPath));
 }
 </script>
 

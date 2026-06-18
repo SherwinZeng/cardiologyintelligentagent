@@ -1,21 +1,21 @@
 function requireEnv(name: keyof ImportMetaEnv): string {
-  const value = import.meta.env[name]
+  const value = import.meta.env[name];
 
   if (!value) {
-    throw new Error(`Missing environment variable: ${name}`)
+    throw new Error(`Missing environment variable: ${name}`);
   }
 
-  return value
+  return value;
 }
 
 function optionalEnv(name: keyof ImportMetaEnv): string | undefined {
-  const value = import.meta.env[name]
+  const value = import.meta.env[name];
 
   if (value === undefined || value === '') {
-    return undefined
+    return undefined;
   }
 
-  return value
+  return value;
 }
 
 export const env = {
@@ -25,4 +25,4 @@ export const env = {
   psbNumber: optionalEnv('VITE_PSB_NUMBER'),
   psbLink: optionalEnv('VITE_PSB_LINK') ?? 'https://www.beian.gov.cn/',
   copyrightOwner: optionalEnv('VITE_COPYRIGHT_OWNER') ?? '曾祥瑞',
-} as const
+} as const;

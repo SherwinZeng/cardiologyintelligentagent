@@ -1,51 +1,51 @@
 <script setup lang="ts">
-import { Plus, Search } from '@element-plus/icons-vue'
-import { ref } from 'vue'
-import { useI18n } from 'vue-i18n'
+import { Plus, Search } from '@element-plus/icons-vue';
+import { ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 
-import ChatSessionSwipeItem from './ChatSessionSwipeItem.vue'
-import type { ChatSessionItem } from '../types'
+import ChatSessionSwipeItem from './ChatSessionSwipeItem.vue';
+import type { ChatSessionItem } from '../types';
 
-const SESSION_PAGER_COUNT = 5
+const SESSION_PAGER_COUNT = 5;
 
 defineProps<{
-  sessions: ChatSessionItem[]
-  activeSessionId: string
-  loading?: boolean
-  page: number
-  pageSize: number
-  total: number
-}>()
+  sessions: ChatSessionItem[];
+  activeSessionId: string;
+  loading?: boolean;
+  page: number;
+  pageSize: number;
+  total: number;
+}>();
 
 const emit = defineEmits<{
-  select: [sessionId: string]
-  new: []
-  search: [keyword: string]
-  pageChange: [page: number]
-  delete: [sessionId: string]
-  pin: [sessionId: string, pinned: boolean]
-}>()
+  select: [sessionId: string];
+  new: [];
+  search: [keyword: string];
+  pageChange: [page: number];
+  delete: [sessionId: string];
+  pin: [sessionId: string, pinned: boolean];
+}>();
 
-const { t } = useI18n()
-const openedSessionId = ref('')
-const searchInput = ref('')
+const { t } = useI18n();
+const openedSessionId = ref('');
+const searchInput = ref('');
 
 function handleOpenChange(sessionId: string, open: boolean) {
-  openedSessionId.value = open ? sessionId : ''
+  openedSessionId.value = open ? sessionId : '';
 }
 
 function closeSwipeActions() {
-  openedSessionId.value = ''
+  openedSessionId.value = '';
 }
 
 function handleSearchInput(event: Event) {
-  const value = (event.target as HTMLInputElement).value
-  searchInput.value = value
-  emit('search', value)
+  const value = (event.target as HTMLInputElement).value;
+  searchInput.value = value;
+  emit('search', value);
 }
 
 function handleListClick() {
-  closeSwipeActions()
+  closeSwipeActions();
 }
 </script>
 

@@ -1,14 +1,14 @@
-export type CardioDecorMotion = 'float' | 'heartbeat' | 'drift' | 'spin' | 'glow'
-export type CardioDecorType = 'heart' | 'stethoscope' | 'pulse' | 'bp-cuff' | 'pill' | 'cross'
+export type CardioDecorMotion = 'float' | 'heartbeat' | 'drift' | 'spin' | 'glow';
+export type CardioDecorType = 'heart' | 'stethoscope' | 'pulse' | 'bp-cuff' | 'pill' | 'cross';
 
 export interface CardioDecorItem {
-  id: string
-  type: CardioDecorType
-  top: string
-  left: string
-  size: number
-  motion: CardioDecorMotion
-  delay: number
+  id: string;
+  type: CardioDecorType;
+  top: string;
+  left: string;
+  size: number;
+  motion: CardioDecorMotion;
+  delay: number;
 }
 
 /** 聊天空状态：环绕铭铭四周的心内小装饰 */
@@ -27,4 +27,4 @@ export const CHAT_EMPTY_DECOR_ITEMS: CardioDecorItem[] = [
   { id: 'c12', type: 'pulse', top: '78%', left: '78%', size: 28, motion: 'drift', delay: 1.9 },
   { id: 'c13', type: 'cross', top: '82%', left: '10%', size: 18, motion: 'glow', delay: 2.6 },
   { id: 'c14', type: 'bp-cuff', top: '84%', left: '92%', size: 24, motion: 'float', delay: 0.4 },
-]
+];

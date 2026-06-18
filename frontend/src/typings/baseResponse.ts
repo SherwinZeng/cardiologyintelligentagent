@@ -1,5 +1,5 @@
 export interface IBaseResponse<T> {
-    code: number;
-    message: string;
-    data: T
+  code: number;
+  message: string;
+  data: T;
 }

@@ -1,17 +1,17 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useI18n } from 'vue-i18n'
+import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 
-import PrivacyShieldIcon from '@/components/icons/PrivacyShieldIcon.vue'
+import PrivacyShieldIcon from '@/components/icons/PrivacyShieldIcon.vue';
 
 interface PrivacySection {
-  title: string
-  items: string[]
+  title: string;
+  items: string[];
 }
 
-const { t, tm } = useI18n()
+const { t, tm } = useI18n();
 
-const sections = computed(() => tm('privacyPage.sections') as PrivacySection[])
+const sections = computed(() => tm('privacyPage.sections') as PrivacySection[]);
 </script>
 
 <template>

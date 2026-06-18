@@ -1,20 +1,20 @@
 <script setup lang="ts">
-import { storeToRefs } from 'pinia'
-import { computed } from 'vue'
-import { useI18n } from 'vue-i18n'
+import { storeToRefs } from 'pinia';
+import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 
-import { SUPPORT_LOCALES, type AppLocale } from '@/i18n'
-import { useLocaleStore } from '@/stores/locale'
+import { SUPPORT_LOCALES, type AppLocale } from '@/i18n';
+import { useLocaleStore } from '@/stores/locale';
 
-const { t, te } = useI18n()
-const localeStore = useLocaleStore()
-const { locale } = storeToRefs(localeStore)
+const { t, te } = useI18n();
+const localeStore = useLocaleStore();
+const { locale } = storeToRefs(localeStore);
 
-const localeLabel = computed(() => (locale.value === 'zh-CN' ? '中' : 'EN'))
+const localeLabel = computed(() => (locale.value === 'zh-CN' ? '中' : 'EN'));
 
 function localeOptionLabel(item: AppLocale) {
-  const key = `locale.${item}`
-  return te(key) ? t(key) : item
+  const key = `locale.${item}`;
+  return te(key) ? t(key) : item;
 }
 </script>
 

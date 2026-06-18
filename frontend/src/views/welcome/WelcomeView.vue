@@ -1,31 +1,31 @@
 <script setup lang="ts">
-import { ArrowRight, Picture, TrendCharts } from '@element-plus/icons-vue'
-import { computed, ref } from 'vue'
-import { useI18n } from 'vue-i18n'
-import { useRouter } from 'vue-router'
+import { ArrowRight, Picture, TrendCharts } from '@element-plus/icons-vue';
+import { computed, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
+import { useRouter } from 'vue-router';
 
-import mingmingWelcomeUrl from '@/assets/character/mingming-welcome-q.png'
-import MingmingLoadingTipContent from '@/components/common/MingmingLoadingTipContent.vue'
-import CuteHeartIcon from '@/components/icons/CuteHeartIcon.vue'
-import PrivacyShieldIcon from '@/components/icons/PrivacyShieldIcon.vue'
+import mingmingWelcomeUrl from '@/assets/character/mingming-welcome-q.png';
+import MingmingLoadingTipContent from '@/components/common/MingmingLoadingTipContent.vue';
+import CuteHeartIcon from '@/components/icons/CuteHeartIcon.vue';
+import PrivacyShieldIcon from '@/components/icons/PrivacyShieldIcon.vue';
 
-import WelcomeEcgWave from './components/WelcomeEcgWave.vue'
+import WelcomeEcgWave from './components/WelcomeEcgWave.vue';
 
-const { t, tm } = useI18n()
-const router = useRouter()
+const { t, tm } = useI18n();
+const router = useRouter();
 
-const message = ref('')
+const message = ref('');
 
 const dailyTip = computed(() => {
-  const tips = tm('welcome.tips')
-  const count = Array.isArray(tips) ? tips.length : 0
+  const tips = tm('welcome.tips');
+  const count = Array.isArray(tips) ? tips.length : 0;
   if (count === 0) {
-    return ''
+    return '';
   }
 
-  const dayIndex = Math.floor(Date.now() / 86_400_000) % count
-  return t(`welcome.tips[${dayIndex}]`)
-})
+  const dayIndex = Math.floor(Date.now() / 86_400_000) % count;
+  return t(`welcome.tips[${dayIndex}]`);
+});
 
 const chips = computed(() => [
   {
@@ -46,35 +46,35 @@ const chips = computed(() => [
     icon: TrendCharts,
     tone: 'green',
   },
-])
+]);
 
 function applyChip(text: string) {
-  message.value = text
+  message.value = text;
 }
 
 function startConsultation() {
-  const trimmed = message.value.trim()
+  const trimmed = message.value.trim();
   if (!trimmed) {
-    return
+    return;
   }
 
   router.push({
     name: 'chat',
     query: { message: trimmed },
-  })
+  });
 }
 
-type DecorMotion = 'float' | 'heartbeat' | 'drift' | 'spin' | 'glow'
-type DecorType = 'heart' | 'stethoscope' | 'pulse' | 'bp-cuff' | 'pill' | 'cross'
+type DecorMotion = 'float' | 'heartbeat' | 'drift' | 'spin' | 'glow';
+type DecorType = 'heart' | 'stethoscope' | 'pulse' | 'bp-cuff' | 'pill' | 'cross';
 
 interface DecorItem {
-  id: string
-  type: DecorType
-  top: string
-  left: string
-  size: number
-  motion: DecorMotion
-  delay: number
+  id: string;
+  type: DecorType;
+  top: string;
+  left: string;
+  size: number;
+  motion: DecorMotion;
+  delay: number;
 }
 
 const decorItems: DecorItem[] = [
@@ -95,10 +95,18 @@ const decorItems: DecorItem[] = [
   { id: 'd15', type: 'cross', top: '70%', left: '84%', size: 20, motion: 'glow', delay: 1.0 },
   { id: 'd16', type: 'bp-cuff', top: '74%', left: '92%', size: 26, motion: 'float', delay: 2.4 },
   { id: 'd17', type: 'pulse', top: '84%', left: '10%', size: 28, motion: 'drift', delay: 1.2 },
-  { id: 'd18', type: 'stethoscope', top: '86%', left: '24%', size: 24, motion: 'float', delay: 0.7 },
+  {
+    id: 'd18',
+    type: 'stethoscope',
+    top: '86%',
+    left: '24%',
+    size: 24,
+    motion: 'float',
+    delay: 0.7,
+  },
   { id: 'd19', type: 'heart', top: '85%', left: '76%', size: 24, motion: 'heartbeat', delay: 1.9 },
   { id: 'd20', type: 'pill', top: '88%', left: '88%', size: 22, motion: 'spin', delay: 2.1 },
-]
+];
 </script>
 
 <template>
@@ -142,8 +150,20 @@ const decorItems: DecorItem[] = [
                 stroke-linecap="round"
                 d="M9 3a2.5 2.5 0 0 1 5 0v4.5a3.5 3.5 0 0 1-7 0V3m2.5 7.5V14m-2.5 2.5h5"
               />
-              <circle cx="17.5" cy="17.5" r="2" fill="none" stroke="currentColor" stroke-width="1.4" />
-              <path fill="none" stroke="currentColor" stroke-width="1.4" d="M14 14.5c0-1.9 1.6-3.5 3.5-3.5" />
+              <circle
+                cx="17.5"
+                cy="17.5"
+                r="2"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.4"
+              />
+              <path
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.4"
+                d="M14 14.5c0-1.9 1.6-3.5 3.5-3.5"
+              />
             </template>
             <template v-else-if="item.type === 'pulse'">
               <path
@@ -166,8 +186,19 @@ const decorItems: DecorItem[] = [
                 stroke="currentColor"
                 stroke-width="1.4"
               />
-              <path fill="none" stroke="currentColor" stroke-width="1.4" d="M16 10h2a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2h-2" />
-              <path fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" d="M8 16v2" />
+              <path
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.4"
+                d="M16 10h2a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2h-2"
+              />
+              <path
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.4"
+                stroke-linecap="round"
+                d="M8 16v2"
+              />
             </template>
             <template v-else-if="item.type === 'pill'">
               <rect
@@ -199,11 +230,7 @@ const decorItems: DecorItem[] = [
         <div class="welcome-page__character-wrap">
           <div class="welcome-page__character-shell">
             <div class="welcome-page__character-aura" aria-hidden="true" />
-            <img
-              class="welcome-page__character"
-              :src="mingmingWelcomeUrl"
-              :alt="t('welcome.hi')"
-            />
+            <img class="welcome-page__character" :src="mingmingWelcomeUrl" :alt="t('welcome.hi')" />
             <span class="welcome-page__palm-heart" aria-hidden="true">
               <CuteHeartIcon size="100%" />
             </span>

@@ -1,17 +1,17 @@
 <script setup lang="ts">
-import type { CardioDecorItem } from './cardioDecor'
-import { CHAT_EMPTY_DECOR_ITEMS } from './cardioDecor'
+import type { CardioDecorItem } from './cardioDecor';
+import { CHAT_EMPTY_DECOR_ITEMS } from './cardioDecor';
 
 withDefaults(
   defineProps<{
-    items?: CardioDecorItem[]
-    maskCenter?: string
+    items?: CardioDecorItem[];
+    maskCenter?: string;
   }>(),
   {
     items: () => CHAT_EMPTY_DECOR_ITEMS,
     maskCenter: '50% 50%',
   },
-)
+);
 </script>
 
 <template>
@@ -49,7 +49,12 @@ withDefaults(
           d="M9 3a2.5 2.5 0 0 1 5 0v4.5a3.5 3.5 0 0 1-7 0V3m2.5 7.5V14m-2.5 2.5h5"
         />
         <circle cx="17.5" cy="17.5" r="2" fill="none" stroke="currentColor" stroke-width="1.4" />
-        <path fill="none" stroke="currentColor" stroke-width="1.4" d="M14 14.5c0-1.9 1.6-3.5 3.5-3.5" />
+        <path
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.4"
+          d="M14 14.5c0-1.9 1.6-3.5 3.5-3.5"
+        />
       </template>
       <template v-else-if="item.type === 'pulse'">
         <path
@@ -72,8 +77,19 @@ withDefaults(
           stroke="currentColor"
           stroke-width="1.4"
         />
-        <path fill="none" stroke="currentColor" stroke-width="1.4" d="M16 10h2a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2h-2" />
-        <path fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" d="M8 16v2" />
+        <path
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.4"
+          d="M16 10h2a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2h-2"
+        />
+        <path
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.4"
+          stroke-linecap="round"
+          d="M8 16v2"
+        />
       </template>
       <template v-else-if="item.type === 'pill'">
         <rect

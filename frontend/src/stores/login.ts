@@ -1,10 +1,10 @@
-import { defineStore } from 'pinia'
+import { defineStore } from 'pinia';
 
-import { useLocalStorage } from '@/hooks/useStorage'
-import type { ILoginState } from '@/typings/state/loginState.ts'
-import { resolveUserDisplayName } from '@/utils/resolveUserDisplayName.ts'
+import { useLocalStorage } from '@/hooks/useStorage';
+import type { ILoginState } from '@/typings/state/loginState.ts';
+import { resolveUserDisplayName } from '@/utils/resolveUserDisplayName.ts';
 
-const STORAGE_KEY = 'user_login'
+const STORAGE_KEY = 'user_login';
 
 export const useUserLoginStore = defineStore('userLogin', () => {
   const userLoginStore = reactive<ILoginState>({
@@ -13,37 +13,37 @@ export const useUserLoginStore = defineStore('userLogin', () => {
     id: '',
     token: '',
     avatar: '',
-  })
+  });
 
-  const isLoggedIn = computed(() => Boolean(userLoginStore.token && userLoginStore.id))
+  const isLoggedIn = computed(() => Boolean(userLoginStore.token && userLoginStore.id));
 
   const displayName = computed(() => {
     if (userLoginStore.username === '访客') {
-      return '访客'
+      return '访客';
     }
-    return resolveUserDisplayName(userLoginStore.username, userLoginStore.phone)
-  })
+    return resolveUserDisplayName(userLoginStore.username, userLoginStore.phone);
+  });
 
   const changeUserLoginStore = (loginState: ILoginState) => {
-    userLoginStore.username = loginState.username
-    userLoginStore.phone = loginState.phone
-    userLoginStore.id = loginState.id
-    userLoginStore.token = loginState.token
-    userLoginStore.avatar = loginState.avatar
-  }
+    userLoginStore.username = loginState.username;
+    userLoginStore.phone = loginState.phone;
+    userLoginStore.id = loginState.id;
+    userLoginStore.token = loginState.token;
+    userLoginStore.avatar = loginState.avatar;
+  };
 
   /** 刷新页面后从 localStorage 恢复登录态 */
   const init = () => {
-    const { getItem } = useLocalStorage()
-    const raw = getItem(STORAGE_KEY)
+    const { getItem } = useLocalStorage();
+    const raw = getItem(STORAGE_KEY);
     if (!raw) {
-      return
+      return;
     }
 
     try {
-      const data = JSON.parse(raw) as Partial<ILoginState>
+      const data = JSON.parse(raw) as Partial<ILoginState>;
       if (!data.token || !data.id) {
-        return
+        return;
       }
 
       changeUserLoginStore({
@@ -52,15 +52,15 @@ export const useUserLoginStore = defineStore('userLogin', () => {
         username: data.username ?? '',
         phone: data.phone ?? '',
         avatar: data.avatar ?? '',
-      })
+      });
     } catch {
       // ignore invalid cache
     }
-  }
+  };
 
   const persistLogin = (loginState: ILoginState) => {
-    const { setItem } = useLocalStorage()
-    changeUserLoginStore(loginState)
+    const { setItem } = useLocalStorage();
+    changeUserLoginStore(loginState);
     setItem(
       STORAGE_KEY,
       JSON.stringify({
@@ -70,20 +70,20 @@ export const useUserLoginStore = defineStore('userLogin', () => {
         phone: loginState.phone,
         avatar: loginState.avatar,
       }),
-    )
-  }
+    );
+  };
 
   const clearLogin = () => {
-    const { removeItem } = useLocalStorage()
+    const { removeItem } = useLocalStorage();
     changeUserLoginStore({
       username: '',
       phone: '',
       id: '',
       token: '',
       avatar: '',
-    })
-    removeItem(STORAGE_KEY)
-  }
+    });
+    removeItem(STORAGE_KEY);
+  };
 
   return {
     userLoginStore,
@@ -93,5 +93,5 @@ export const useUserLoginStore = defineStore('userLogin', () => {
     persistLogin,
     clearLogin,
     init,
-  }
-})
+  };
+});

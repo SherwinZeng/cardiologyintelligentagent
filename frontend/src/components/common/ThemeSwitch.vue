@@ -1,21 +1,21 @@
 <script setup lang="ts">
-import { Moon, Sunny } from '@element-plus/icons-vue'
-import { storeToRefs } from 'pinia'
-import { computed } from 'vue'
-import { useI18n } from 'vue-i18n'
+import { Moon, Sunny } from '@element-plus/icons-vue';
+import { storeToRefs } from 'pinia';
+import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 
-import { useThemeStore, type ThemePreference } from '@/stores/theme'
+import { useThemeStore, type ThemePreference } from '@/stores/theme';
 
-const { t } = useI18n()
-const themeStore = useThemeStore()
-const { preference } = storeToRefs(themeStore)
+const { t } = useI18n();
+const themeStore = useThemeStore();
+const { preference } = storeToRefs(themeStore);
 
-const options: ThemePreference[] = ['light', 'dark', 'system']
+const options: ThemePreference[] = ['light', 'dark', 'system'];
 
-const activeIcon = computed(() => (themeStore.resolvedTheme === 'dark' ? Moon : Sunny))
+const activeIcon = computed(() => (themeStore.resolvedTheme === 'dark' ? Moon : Sunny));
 
 function label(mode: ThemePreference) {
-  return t(`theme.${mode}`)
+  return t(`theme.${mode}`);
 }
 </script>
 

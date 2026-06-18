@@ -1,31 +1,26 @@
 <script setup lang="ts">
-import { User } from '@element-plus/icons-vue'
-import { useI18n } from 'vue-i18n'
+import { User } from '@element-plus/icons-vue';
+import { useI18n } from 'vue-i18n';
 
-import githubIconUrl from '@/assets/icons/brand/github.svg?url'
-import qqIconUrl from '@/assets/icons/brand/qq.svg?url'
-import MingmingLoadingTipContent from '@/components/common/MingmingLoadingTipContent.vue'
+import githubIconUrl from '@/assets/icons/brand/github.svg?url';
+import qqIconUrl from '@/assets/icons/brand/qq.svg?url';
+import MingmingLoadingTipContent from '@/components/common/MingmingLoadingTipContent.vue';
 
 defineProps<{
-  provider: 'guest' | 'qq' | 'github'
-  loading?: boolean
-  disabled?: boolean
-}>()
+  provider: 'guest' | 'qq' | 'github';
+  loading?: boolean;
+  disabled?: boolean;
+}>();
 
 defineEmits<{
-  click: []
-}>()
+  click: [];
+}>();
 
-const { t } = useI18n()
+const { t } = useI18n();
 </script>
 
 <template>
-  <el-tooltip
-    v-if="disabled"
-    placement="bottom"
-    effect="light"
-    popper-class="mingming-loading-tip"
-  >
+  <el-tooltip v-if="disabled" placement="bottom" effect="light" popper-class="mingming-loading-tip">
     <template #content>
       <MingmingLoadingTipContent />
     </template>

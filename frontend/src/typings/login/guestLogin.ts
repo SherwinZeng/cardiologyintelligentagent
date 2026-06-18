@@ -1,4 +1,4 @@
 export interface IGuestLoginResponse {
-    token: string;
-    id: string;
+  token: string;
+  id: string;
 }

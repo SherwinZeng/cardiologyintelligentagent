@@ -1,19 +1,19 @@
 <script setup lang="ts">
-import { useId } from 'vue'
+import { useId } from 'vue';
 
 withDefaults(
   defineProps<{
-    size?: number | string
+    size?: number | string;
   }>(),
   {
     size: 48,
   },
-)
+);
 
-const uid = useId().replace(/:/g, '')
-const bodyGradientId = `cute-heart-body-${uid}`
-const shineGradientId = `cute-heart-shine-${uid}`
-const shadowFilterId = `cute-heart-shadow-${uid}`
+const uid = useId().replace(/:/g, '');
+const bodyGradientId = `cute-heart-body-${uid}`;
+const shineGradientId = `cute-heart-shine-${uid}`;
+const shadowFilterId = `cute-heart-shadow-${uid}`;
 </script>
 
 <template>
@@ -26,7 +26,14 @@ const shadowFilterId = `cute-heart-shadow-${uid}`
     aria-hidden="true"
   >
     <defs>
-      <linearGradient :id="bodyGradientId" x1="18" y1="10" x2="48" y2="58" gradientUnits="userSpaceOnUse">
+      <linearGradient
+        :id="bodyGradientId"
+        x1="18"
+        y1="10"
+        x2="48"
+        y2="58"
+        gradientUnits="userSpaceOnUse"
+      >
         <stop offset="0%" stop-color="#ffe4ef" />
         <stop offset="38%" stop-color="#fb9fbd" />
         <stop offset="100%" stop-color="#f43f5e" />

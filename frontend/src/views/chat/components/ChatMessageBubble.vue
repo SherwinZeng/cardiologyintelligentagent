@@ -1,71 +1,68 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue'
-import { storeToRefs } from 'pinia'
-import { useI18n } from 'vue-i18n'
+import { computed, watch } from 'vue';
+import { storeToRefs } from 'pinia';
+import { useI18n } from 'vue-i18n';
 
-import guestAvatarUrl from '@/assets/character/mingming-avatar.png'
-import mingmingChatAvatarUrl from '@/assets/character/mingming-welcome-q.png'
-import { useTypewriter } from '@/hooks/useTypewriter'
-import { useUserLoginStore } from '@/stores/login.ts'
+import guestAvatarUrl from '@/assets/character/mingming-avatar.png';
+import mingmingChatAvatarUrl from '@/assets/character/mingming-welcome-q.png';
+import { useTypewriter } from '@/hooks/useTypewriter';
+import { useUserLoginStore } from '@/stores/login.ts';
 
-import type { ChatMessage } from '../types'
+import type { ChatMessage } from '../types';
 
 const props = defineProps<{
-  message: ChatMessage
-}>()
+  message: ChatMessage;
+}>();
 
 const emit = defineEmits<{
-  typing: []
-}>()
+  typing: [];
+}>();
 
-const { t } = useI18n()
-const { displayName } = storeToRefs(useUserLoginStore())
-const { displayedText, isTyping, start, skip } = useTypewriter({ speed: 20 })
+const { t } = useI18n();
+const { displayName } = storeToRefs(useUserLoginStore());
+const { displayedText, isTyping, start, skip } = useTypewriter({ speed: 20 });
 
-const isAssistant = computed(() => props.message.role === 'assistant')
-const shouldAnimate = computed(() => isAssistant.value && props.message.animate === true)
+const isAssistant = computed(() => props.message.role === 'assistant');
+const shouldAnimate = computed(() => isAssistant.value && props.message.animate === true);
 
 const showSections = computed(() => {
   if (!isAssistant.value || !props.message.sections) {
-    return false
+    return false;
   }
   if (!shouldAnimate.value) {
-    return true
+    return true;
   }
-  return !isTyping.value
-})
+  return !isTyping.value;
+});
 
 const bubbleText = computed(() => {
   if (!isAssistant.value) {
-    return props.message.content
+    return props.message.content;
   }
   if (shouldAnimate.value) {
-    return displayedText.value
+    return displayedText.value;
   }
-  return props.message.content
-})
+  return props.message.content;
+});
 
 watch(
   () => [props.message.id, props.message.content, props.message.animate] as const,
   ([, content, animate]) => {
     if (!isAssistant.value) {
-      return
+      return;
     }
     if (animate) {
-      start(content, () => emit('typing'))
-      return
+      start(content, () => emit('typing'));
+      return;
     }
-    skip(content)
+    skip(content);
   },
   { immediate: true },
-)
+);
 </script>
 
 <template>
-  <article
-    class="chat-message"
-    :class="message.role === 'user' ? 'is-user' : 'is-assistant'"
-  >
+  <article class="chat-message" :class="message.role === 'user' ? 'is-user' : 'is-assistant'">
     <el-avatar
       v-if="message.role === 'assistant'"
       class="chat-message__avatar chat-message__avatar--assistant"
@@ -96,7 +93,8 @@ watch(
 
       <div class="chat-message__bubble">
         <p class="chat-message__text">
-          {{ bubbleText }}<span
+          {{ bubbleText
+          }}<span
             v-if="shouldAnimate && isTyping"
             class="chat-message__cursor"
             aria-hidden="true"

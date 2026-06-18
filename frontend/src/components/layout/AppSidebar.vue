@@ -6,30 +6,30 @@ import {
   Document,
   Notebook,
   TrendCharts,
-} from '@element-plus/icons-vue'
-import type { Component } from 'vue'
-import { computed } from 'vue'
-import { useI18n } from 'vue-i18n'
-import { useRoute } from 'vue-router'
+} from '@element-plus/icons-vue';
+import type { Component } from 'vue';
+import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
+import { useRoute } from 'vue-router';
 
-import logoUrl from '@/assets/brand/logo.png'
-import MingmingLoadingTipContent from '@/components/common/MingmingLoadingTipContent.vue'
-import PrivacyShieldIcon from '@/components/icons/PrivacyShieldIcon.vue'
-import { useLocaleStore } from '@/stores/locale'
+import logoUrl from '@/assets/brand/logo.png';
+import MingmingLoadingTipContent from '@/components/common/MingmingLoadingTipContent.vue';
+import PrivacyShieldIcon from '@/components/icons/PrivacyShieldIcon.vue';
+import { useLocaleStore } from '@/stores/locale';
 
-const { t } = useI18n()
-const route = useRoute()
-const localeStore = useLocaleStore()
+const { t } = useI18n();
+const route = useRoute();
+const localeStore = useLocaleStore();
 
-const isZh = computed(() => localeStore.locale === 'zh-CN')
+const isZh = computed(() => localeStore.locale === 'zh-CN');
 
 interface SidebarItem {
-  icon?: Component
-  labelKey?: string
-  to?: string
-  name?: string
-  disabled?: boolean
-  logoOnly?: boolean
+  icon?: Component;
+  labelKey?: string;
+  to?: string;
+  name?: string;
+  disabled?: boolean;
+  logoOnly?: boolean;
 }
 
 const items: SidebarItem[] = [
@@ -40,10 +40,10 @@ const items: SidebarItem[] = [
   { icon: Calendar, labelKey: 'nav.appointment', disabled: true },
   { icon: TrendCharts, labelKey: 'nav.healthData', disabled: true },
   { icon: Notebook, labelKey: 'nav.healthKnowledge', disabled: true },
-]
+];
 
 function isActive(name?: string) {
-  return Boolean(name && route.name === name)
+  return Boolean(name && route.name === name);
 }
 
 function itemClass(item: SidebarItem) {
@@ -51,7 +51,7 @@ function itemClass(item: SidebarItem) {
     'is-active': isActive(item.name),
     'is-disabled': item.disabled,
     'is-logo-only': item.logoOnly,
-  }
+  };
 }
 </script>
 
@@ -62,11 +62,7 @@ function itemClass(item: SidebarItem) {
     aria-label="sidebar"
   >
     <nav class="app-sidebar__nav">
-      <div
-        v-for="(item, index) in items"
-        :key="index"
-        class="app-sidebar__nav-entry"
-      >
+      <div v-for="(item, index) in items" :key="index" class="app-sidebar__nav-entry">
         <el-tooltip
           v-if="item.disabled"
           placement="right"
@@ -77,11 +73,7 @@ function itemClass(item: SidebarItem) {
             <MingmingLoadingTipContent />
           </template>
           <div class="app-sidebar__tooltip-wrap">
-            <div
-              class="app-sidebar__item"
-              :class="itemClass(item)"
-              role="presentation"
-            >
+            <div class="app-sidebar__item" :class="itemClass(item)" role="presentation">
               <span class="app-sidebar__icon-wrap">
                 <el-icon :size="22">
                   <component :is="item.icon" />
