@@ -8,6 +8,7 @@
 
 import logging
 
+from cardiology_chat.graph.dialogue_core import ContextBuilder, DialoguePolicy, MemoryExtractor
 from cardiology_chat.graph.llm import latest_user_message
 from cardiology_chat.graph.routing.rules import resolve_route
 from cardiology_chat.graph.state import CardiologyState
@@ -16,16 +17,45 @@ logger = logging.getLogger(__name__)
 
 
 def route_after_dispatch(state: CardiologyState) -> str:
-    """conditional_edges 回调：返回分支名，必须与 builder 里映射 key 一致。"""
+    """conditional_edges 回调：读取 dispatch 写入的 route。"""
     return state["route"]
 
 
 def clinical_dispatch_node(state: CardiologyState) -> dict:
-    """图入口节点：解析用户意图，写入 state['route'] 供 conditional_edges 分支。"""
+    """图入口：先写稳定记忆，再决定 route / policy / context。"""
     text = latest_user_message(state)
     if not text:
         return {"route": "fallback"}
 
-    route = resolve_route(state)
-    logger.info("dispatch 规则路由 | route=%s text=%s", route, text[:40])
-    return {"route": route}
+    memory_updates = MemoryExtractor.commit(state, text)
+    decision_state = {**state, **memory_updates}
+    route = resolve_route(decision_state)
+    policy = DialoguePolicy.resolve(decision_state, route, text)
+
+    # 身份回忆是确定性策略，不交给症状 sticky 或 LLM 猜。
+    if policy == "identity_recall":
+        route = "greeting"
+
+    context_state = {**decision_state, "route": route, "dialogue_policy": policy}
+    context_bundle = ContextBuilder.build(context_state, route, policy)
+    structured = memory_updates.get("structured_memory") or {}
+    profile = structured.get("profile") if isinstance(structured, dict) else {}
+    medical_profile = structured.get("medical_profile") if isinstance(structured, dict) else {}
+    episode = context_bundle.get("active_symptom_summary") or {}
+    episode_active = any(value not in ("", None, False, []) for value in episode.values())
+    logger.info(
+        "dialogue_core 决策完成 | route=%s policy=%s memory_changed=%s "
+        "profile_keys=%s medical_keys=%s episode_active=%s",
+        route,
+        policy,
+        bool(memory_updates),
+        sorted(profile.keys()) if isinstance(profile, dict) else [],
+        sorted(medical_profile.keys()) if isinstance(medical_profile, dict) else [],
+        episode_active,
+    )
+    return {
+        **memory_updates,
+        "route": route,
+        "dialogue_policy": policy,
+        "context_bundle": context_bundle,
+    }

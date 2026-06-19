@@ -1,4 +1,4 @@
-"""LangGraph checkpointer（thread_id = uid:session），仅 PostgreSQL。"""
+"""LangGraph checkpointer（thread_id = uid:session），当前生产只使用 PostgreSQL。"""
 
 import logging
 from functools import lru_cache

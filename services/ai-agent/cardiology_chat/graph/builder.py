@@ -58,11 +58,11 @@ builder.add_node("greeting_response_node", greeting_response_node)
 builder.add_node("medication_consultation_node", medication_consultation_node)
 builder.add_node("medical_fallback_response_node", medical_fallback_response_node)
 
-# ── 边：dispatch 选 route，由 state["route"] 分支 ──
+# ── 边：dispatch 会写入 route，再由 conditional_edges 选择业务节点 ──
 builder.add_edge(START, "clinical_dispatch_node")
 builder.add_conditional_edges(
     "clinical_dispatch_node",
-    route_after_dispatch,  # 读取 state["route"] 返回分支名
+    route_after_dispatch,
     {
         "symptom": "symptom_collection_node",
         "history": "medical_history_inquiry_node",
@@ -72,6 +72,7 @@ builder.add_conditional_edges(
         "fallback": "medical_fallback_response_node",
     },
 )
+
 
 builder.add_edge("symptom_collection_node", END)
 builder.add_edge("medical_history_inquiry_node", END)

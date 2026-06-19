@@ -3,6 +3,7 @@
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from cardiology_chat.factory.LLMFactory import LLMModelFactory
+from cardiology_chat.graph.dialogue_core import ContextBuilder
 from cardiology_chat.graph.llm.json_parser import parse_llm_json
 from cardiology_chat.graph.llm.messages import conversation_messages_for_llm
 from cardiology_chat.graph.state import CardiologyState
@@ -44,6 +45,9 @@ def invoke_llm_json(
     - use_conversation_rules：追加 prompts/llm/shared.py 中的多轮规则
     """
     prompt = with_conversation_rules(system_prompt) if use_conversation_rules else system_prompt
+    context_prompt = ContextBuilder.as_system_prompt(state)
+    if context_prompt:
+        prompt = f"{prompt}\n\n{context_prompt}"
     try:
         llm = get_flash_llm(temperature)
         messages = [SystemMessage(content=prompt)]

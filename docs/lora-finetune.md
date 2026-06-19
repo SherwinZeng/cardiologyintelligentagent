@@ -31,7 +31,8 @@ ai-agent → Postgres checkpointer（thread_id = uid:session）
 | 组件 | 是否微调 | 备注 |
 |------|----------|------|
 | LangGraph 图结构 | 否 | 节点/Prompt 仍可迭代 |
-| `routing/rules.py` | 否 | **纯规则**选边；sticky + 默认 symptom；不微调 |
+| `routing/rules.py` + `routing/keywords/` | 否 | **纯规则**选边 |
+| `dialogue_core`（MemoryExtractor / DialoguePolicy / ContextBuilder） | 否 | 记忆与策略永远规则 |
 | Checkpointer | 否 | 只存 state |
 | **各节点对话 LLM** | **主战场** | greeting / symptom / lab / medication 等 JSON 四件套 |
 | ~~Router LLM~~ | — | 已停用，LoRA **不**用于图路由 |
@@ -62,12 +63,17 @@ ai-agent → Postgres checkpointer（thread_id = uid:session）
 ```json
 {
   "messages": [
-    {"role": "system", "content": "<与 symptom_llm 等一致的 system>"},
+    {
+      "role": "system",
+      "content": "<symptom_llm 等节点 system>\n\n【结构化上下文】\n用户画像：\n- 称呼：小曾\n- 已知基础病/危险因素：高血压\n当前症状事件：\n- 主诉：胸口闷\n本轮对话策略：symptom_intake\n请优先遵守结构化上下文；不要和用户已明确提供的信息冲突。"
+    },
     {"role": "user", "content": "最近胸口闷"},
     {"role": "assistant", "content": "{\"urgency\":\"yellow\",\"explanation\":\"...\",\"advice\":\"...\",\"disclaimer\":\"...\"}"}
   ]
 }
 ```
+
+`system` 中 **【结构化上下文】** 块应与线上一致：来自 `ContextBuilder.as_system_prompt` 的格式（用户画像 + 症状事件 + `dialogue_policy`）。微调数据若只有裸 `*_llm.py` 而无该块，会与生产行为分裂。详见 [memory-context-eval-guide.md](./memory-context-eval-guide.md)。
 
 assistant 必须与线上一致：**严格 JSON**，字段 `urgency/explanation/advice/disclaimer`。
 
@@ -133,5 +139,7 @@ max_seq_length: 4096
 
 ## 9. 相关文档
 
+- [memory-context-eval-guide.md](./memory-context-eval-guide.md) — 画像/上下文/策略与 LoRA system 对齐
+- [dialogue-core-line-by-line.md](./dialogue-core-line-by-line.md)
 - [beta2-plan.md](./beta2-plan.md)
 - [services/ai-agent/README.md](../services/ai-agent/README.md)

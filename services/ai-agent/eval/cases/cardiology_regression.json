@@ -1,0 +1,187 @@
+[
+  {
+    "id": "pure_hello_greeting",
+    "tier": "rules",
+    "tags": ["greeting"],
+    "description": "纯寒暄走 greeting",
+    "turns": ["你好呀"],
+    "assert_routes": ["greeting"]
+  },
+  {
+    "id": "name_intro_greeting",
+    "tier": "rules",
+    "tags": ["greeting", "memory"],
+    "description": "自我介绍走 greeting",
+    "turns": ["你好我叫小曾"],
+    "assert_routes": ["greeting"],
+    "assert_policies": ["small_chat"]
+  },
+  {
+    "id": "identity_recall_after_intro",
+    "tier": "rules",
+    "tags": ["greeting", "memory", "policy"],
+    "description": "自我介绍后问名字，走身份记忆策略",
+    "turns": ["你好我叫小曾", "我叫什么"],
+    "assert_routes": ["greeting", "greeting"],
+    "assert_policies": ["small_chat", "identity_recall"]
+  },
+  {
+    "id": "identity_recall_without_memory",
+    "tier": "rules",
+    "tags": ["greeting", "memory", "policy"],
+    "description": "没有记忆时问名字，不进入普通症状问诊",
+    "turns": ["你知道我叫什么吗"],
+    "assert_routes": ["greeting"],
+    "assert_policies": ["identity_recall"]
+  },
+  {
+    "id": "symptom_keyword",
+    "tier": "rules",
+    "tags": ["symptom"],
+    "description": "胸闷关键词走 symptom",
+    "turns": ["最近胸口闷"],
+    "assert_routes": ["symptom"]
+  },
+  {
+    "id": "sticky_short_detail",
+    "tier": "rules",
+    "tags": ["symptom", "sticky"],
+    "description": "第二轮短句性质描述保持 symptom",
+    "turns": ["我心脏不舒服", "压榨感"],
+    "inject_before_turn": {
+      "1": { "chief_complaint": "我心脏不舒服", "route": "symptom" }
+    },
+    "assert_routes": ["symptom", "symptom"]
+  },
+  {
+    "id": "er_doubt_after_crushing",
+    "tier": "rules",
+    "tags": ["symptom", "sticky", "high_risk"],
+    "description": "突发压榨感缓解后质疑急诊，路由仍 symptom",
+    "turns": [
+      "我心脏不舒服",
+      "压榨感",
+      "突然间就这样了但现在好多了",
+      "一定要去吗"
+    ],
+    "inject_before_turn": {
+      "3": {
+        "chief_complaint": "我心脏不舒服",
+        "route": "symptom",
+        "triage_level": "red",
+        "red_flag_suspected": true
+      }
+    },
+    "assert_routes": ["symptom", "symptom", "symptom", "symptom"],
+    "assert_policies": [
+      "symptom_intake",
+      "symptom_intake",
+      "emergency_red",
+      "er_doubt_after_high_risk"
+    ]
+  },
+  {
+    "id": "recall_in_symptom_context",
+    "tier": "rules",
+    "tags": ["symptom", "memory"],
+    "description": "症状语境下追问记得吗走 symptom",
+    "turns": ["我胸口闷", "你还记得吗"],
+    "inject_before_turn": {
+      "1": { "chief_complaint": "我胸口闷", "route": "symptom" }
+    },
+    "assert_routes": ["symptom", "symptom"]
+  },
+  {
+    "id": "lab_ecg",
+    "tier": "rules",
+    "tags": ["lab"],
+    "description": "心电图解读走 lab",
+    "turns": ["帮我看看这份心电图"],
+    "assert_routes": ["lab"]
+  },
+  {
+    "id": "medication_statin",
+    "tier": "rules",
+    "tags": ["medication"],
+    "description": "他汀咨询走 medication",
+    "turns": ["他汀有什么副作用"],
+    "assert_routes": ["medication"]
+  },
+  {
+    "id": "history_hypertension",
+    "tier": "rules",
+    "tags": ["history"],
+    "description": "既往史走 history",
+    "turns": ["我有高血压病史"],
+    "assert_routes": ["history"]
+  },
+  {
+    "id": "off_topic_weather",
+    "tier": "rules",
+    "tags": ["fallback"],
+    "description": "明显跑题走 fallback",
+    "turns": ["今天天气怎么样"],
+    "assert_routes": ["fallback"]
+  },
+  {
+    "id": "ambiguous_defaults_symptom",
+    "tier": "rules",
+    "tags": ["symptom"],
+    "description": "模糊担忧默认 symptom",
+    "turns": ["有点担心"],
+    "assert_routes": ["symptom"]
+  },
+  {
+    "id": "symptom_blocks_greeting_interrupt",
+    "tier": "rules",
+    "tags": ["symptom", "sticky"],
+    "description": "症状会话中纯你好不抢回 greeting",
+    "turns": ["我心脏不舒服", "你好"],
+    "inject_before_turn": {
+      "1": { "chief_complaint": "我心脏不舒服", "route": "symptom", "triage_level": "yellow" }
+    },
+    "assert_routes": ["symptom", "symptom"]
+  },
+  {
+    "id": "lab_sticky_followup",
+    "tier": "rules",
+    "tags": ["lab", "sticky"],
+    "description": "lab 语境下补充数值保持 lab",
+    "turns": ["肌钙蛋白 0.08", "这个算高吗"],
+    "inject_before_turn": {
+      "1": {
+        "route": "lab",
+        "investigation_text": "肌钙蛋白 0.08",
+        "lab_followup_needed": true
+      }
+    },
+    "assert_routes": ["lab", "lab"]
+  },
+  {
+    "id": "e2e_er_doubt_no_questionnaire",
+    "tier": "e2e",
+    "tags": ["symptom", "high_risk", "e2e"],
+    "description": "E2E：急诊质疑不应出现首轮 16 题问卷",
+    "turns": [
+      "我心脏不舒服",
+      "压榨感",
+      "突然间就这样了但现在好多了",
+      "一定要去吗"
+    ],
+    "assert": {
+      "urgency": "red",
+      "must_contain_any": ["急诊", "就医", "120", "医院"],
+      "must_not_contain_any": ["【一、主诉与起病】", "16. 近期有没有外伤"]
+    }
+  },
+  {
+    "id": "e2e_name_recall_after_intro",
+    "tier": "e2e",
+    "tags": ["memory", "greeting", "e2e"],
+    "description": "E2E：自我介绍后应能回忆称呼",
+    "turns": ["你好我叫小曾", "我叫什么"],
+    "assert": {
+      "must_contain_any": ["小曾"]
+    }
+  }
+]

@@ -1,5 +1,3 @@
-"""静态兜底文案 + LLM 全失败时的 impression 选择（按 route，不猜答案）。"""
-
 from typing import Literal
 
 from cardiology_chat.graph.state import CardiologyState
@@ -77,11 +75,11 @@ UNKNOWN_RECALL_FALLBACK = (
 # greeting 静态彩蛋（仅 LLM 失败时；正常由 LLM 回答）
 _AUTHOR_KEYWORDS = (
     "作者", "谁开发", "谁做的", "谁创造", "谁创建", "开发者", "创作团队", "谁研发",
-    "曾祥瑞", "zengxiangrui", "xiangrui", "祥瑞", "瑞哥",
+    "曾祥瑞", "zengxiangrui", "xiangrui", "小瑞", "小曾",
 )
 _LIKE_KEYWORDS = ("喜欢的人", "喜欢谁", "你喜欢", "你爱", "谈恋爱", "男朋友", "女朋友")
 _CREATOR_EASTER_EGG_KEYWORDS = (
-    "曾祥瑞", "zengxiangrui", "xiangrui", "祥瑞", "瑞哥", "祥瑞哥",
+    "曾祥瑞", "zengxiangrui", "xiangrui", "小瑞", "小曾同志", "小曾",
     "创造你的人", "谁把你做出来", "你的创造者", "铭铭是谁做的",
 )
 
@@ -118,6 +116,8 @@ def is_recall_question(text: str) -> bool:
 
 def _greeting_static_impression(text: str) -> str:
     lower = text.lower()
+    if "你叫什么" in text or "你是谁" in text:
+        return GREETING_RESPONSE
     if any(k in text for k in _LIKE_KEYWORDS):
         return LIKE_AUTHOR_FALLBACK
     if any(k in text for k in _CREATOR_EASTER_EGG_KEYWORDS) or "zengxiangrui" in lower:
@@ -128,7 +128,7 @@ def _greeting_static_impression(text: str) -> str:
         return UNKNOWN_RECALL_FALLBACK
     return GREETING_RESPONSE
 
-
+# 犹豫判断
 def is_er_doubt_question(text: str) -> bool:
     return any(marker in text for marker in ER_DOUBT_MARKERS)
 

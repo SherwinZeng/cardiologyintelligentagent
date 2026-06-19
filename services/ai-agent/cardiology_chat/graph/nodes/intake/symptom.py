@@ -25,7 +25,7 @@ from cardiology_chat.prompts.symptom import (
 _SUDDEN_ONSET_MARKERS = ("突然", "突发", "突然间", "一下子", "忽然")
 _PRESSURE_PAIN_MARKERS = ("压榨", "压迫", "胸口被压", "胸口压")
 
-
+# 高危上下文必须跨轮识别，不能只看当前一句。
 def _is_high_risk_context(state: CardiologyState) -> bool:
     if state.get("red_flag_suspected") or state.get("triage_level") == "red":
         return True
@@ -49,16 +49,15 @@ def _is_symptom_fully_resolved(state: CardiologyState, text: str) -> bool:
         return False
     return True
 
-
+# LLM 失败时的静态兜底，随高危上下文升级。
 def _symptom_fallbacks(state: CardiologyState, text: str) -> tuple[str, str, str]:
     impression = resolve_symptom_static_impression(state, text)
     if _is_high_risk_context(state):
         return "red", impression, RED_FLAG_ADVICE
     return "yellow", impression, NON_URGENT_SYMPTOM_ADVICE
 
-
+# 高危场景下用户质疑是否就医：确定性快路径，不让 LLM 降级成问卷。
 def _build_high_risk_er_doubt_output(state: CardiologyState, text: str) -> dict:
-    """高危语境下用户犹豫是否就医：走确定性快路径，避免 LLM 降级或长问卷。"""
     return {
         "chief_complaint": state.get("chief_complaint") or text,
         "red_flag_suspected": True,
@@ -70,6 +69,7 @@ def _build_high_risk_er_doubt_output(state: CardiologyState, text: str) -> dict:
     }
 
 
+# 标准化 symptom 节点输出，统一写四件套和红旗状态。
 def _build_symptom_output(
     state: CardiologyState,
     text: str,
@@ -111,7 +111,6 @@ def _build_symptom_output(
 def symptom_collection_node(state: CardiologyState) -> dict:
     text = latest_user_message(state)
     triage_fallback, impression_fallback, advice_fallback = _symptom_fallbacks(state, text)
-
     if _is_high_risk_context(state) and is_er_doubt_question(text):
         return _build_high_risk_er_doubt_output(state, text)
 

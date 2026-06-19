@@ -1,11 +1,10 @@
-"""从 CardiologyState 读取对话消息。"""
+"""从 CardiologyState 读取对话消息，并控制传给 LLM 的历史窗口。"""
 
 from langchain_core.messages import AIMessage, HumanMessage
-
 from cardiology_chat.graph.state import CardiologyState
 
-# 传给 LLM 的 assistant 历史上限（完整内容仍存 Java/Redis，此处仅截断 prompt）
 ASSISTANT_LLM_MAX_CHARS = 480
+
 
 def latest_user_message(state: CardiologyState) -> str:
     """取最近一条用户消息（HumanMessage）文本。"""

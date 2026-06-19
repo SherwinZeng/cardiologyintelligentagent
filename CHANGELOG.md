@@ -8,19 +8,28 @@
 
 ### Added
 
-- `graph/routing/rules.py` **纯规则路由**：图的 conditional edge 仅由 `resolve_route()` 决定（关键词 + 会话语境 + sticky）；移除 dispatch Router LLM。
+- `graph/dialogue_core.py`：集中实现 `MemoryExtractor` / `DialoguePolicy` / `ContextBuilder`，形成结构化记忆、对话策略、上下文构建三层骨架。
+- `structured_memory`、`dialogue_policy`、`context_bundle` 三个 LangGraph state 字段，用于持久化用户画像、记录本轮策略、注入 LLM 上下文。
+- 身份记忆确定性直答：`我叫什么 / 你怎么称呼我` 直接读取结构化记忆，不调 LLM，不从历史猜；无记忆时明确说明不知道。
+- `docs/dialogue-core-line-by-line.md`：`dialogue_core.py` 逐行阅读注释文档，方便学习和后续维护。
+- `graph/routing/keywords/`：路由意图词表按场景分文件（greeting / symptom / lab …）。
+- `eval/` 多轮回归集与 `run_eval.py`（rules / e2e），rules 层覆盖 route / memory / policy。
+- `cardiology_chat/memory/` 兼容入口，内部转发到 `MemoryExtractor`，保留给旧测试和学习用。
 - 症状多轮：`部分缓解` 不误触 resolved；高危语境下「一定要去吗 / 能不能不去」等急诊犹豫问题走确定性 fast path，不调 LLM，不再贴首轮长问卷。
-- `tests/test_route_rules.py`、`tests/test_symptom_routing.py` 路由、symptom 兜底与高危就医确认回归测试。
+- `tests/test_route_rules.py`、`tests/test_symptom_routing.py`、`tests/test_memory_extractors.py` 路由、symptom、结构化记忆与身份回忆回归测试。
 
 ### Changed
 
-- dispatch：**不再调用** `prompts/llm/router_llm.py`；日志仅 `dispatch 规则路由`。
+- dispatch：每轮先执行结构化记忆写入，再计算 route / policy / context；运行时日志输出 route、policy、memory_changed、profile_keys、medical_keys、episode_active。
+- LLM 调用：`invoke_llm_json()` 在 system prompt 后注入 `ContextBuilder.as_system_prompt(state)`，让模型看到用户画像和当前症状事件摘要。
+- dispatch：**不再调用** `prompts/llm/router_llm.py`。
 - `resolve_route()` 永远返回合法 route（默认 `symptom`），不再返回 `None` 走 LLM。
 - LangGraph **PostgreSQL checkpointer**（`langgraph-checkpoint-postgres`），`thread_id = uid:session`，跨轮 state 持久化；删会话时 Java Feign 调 `checkpoint/delete/`。
 - `docker-compose` 增加 **PostgreSQL** 服务（本地 checkpointer 存储）。
 - Java `generalUnderstanding` **不再加载/传递 `history`**；Feign 请求体仅 `uid` / `session` / `message`。
 - ai-agent 每轮只 append 当前 `HumanMessage`，答完后 `update_state` 写入 `AIMessage`；多轮上下文从 checkpoint 恢复。
 - 移除 `conversation_memory_node`；跨轮短期上下文改为 checkpoint messages + state。
+- 文档：与 `dialogue_core` 实现对齐——[memory-context-eval-guide.md](docs/memory-context-eval-guide.md)、[dialogue-core-line-by-line.md](docs/dialogue-core-line-by-line.md)、`services/ai-agent/README.md`、`eval/README.md`、`lora-finetune.md`、`beta2-plan.md`。
 
 ### Next
 

@@ -25,8 +25,14 @@ class CardiologyState(TypedDict):
     route: Literal["symptom", "history", "lab", "medication", "greeting", "fallback"]
 
     # ── 对话事实记忆 ──
-    conversation_memory: dict[str, str]  # checkpointer 跨轮恢复的稳定事实，如用户称呼
+    # structured_memory 是正式记忆；conversation_memory 是给旧节点/兜底逻辑用的扁平缓存。
+    structured_memory: dict[str, object]
+    conversation_memory: dict[str, object]  # checkpointer 跨轮恢复的稳定事实，如用户称呼
     user_display_name: str  # 用户自我介绍的称呼
+
+    # ── 对话策略与上下文包 ──
+    dialogue_policy: str  # identity_recall / emergency_red / symptom_intake / ...
+    context_bundle: dict[str, object]  # 给 LLM 的结构化上下文，而不是只塞最近 12 条消息
 
     # ── 采集完成度 ──
     hpi_complete: bool  # 现病史是否采集完整
@@ -71,8 +77,11 @@ def empty_cardiology_state() -> CardiologyState:
     return {
         "messages": [],
         "route": "fallback",
+        "structured_memory": {},
         "conversation_memory": {},
         "user_display_name": "",
+        "dialogue_policy": "",
+        "context_bundle": {},
         "hpi_complete": False,
         "pmh_complete": False,
         "chief_complaint": "",

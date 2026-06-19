@@ -14,17 +14,10 @@ def invoke_general_understanding(uid: str, session: str, message: str) -> dict:
 
     config = {"configurable": {"thread_id": build_thread_id(uid, session)}}
     graph = get_cardiology_graph()
-    result = graph.invoke(
-        {"messages": [HumanMessage(content=message.strip())]},
-        config=config,
-    )
-
+    result = graph.invoke({"messages": [HumanMessage(content=message.strip())]},config=config,)
     explanation = (result.get("clinical_impression") or "").strip()
     if explanation:
-        graph.update_state(
-            config,
-            {"messages": [AIMessage(content=explanation)]},
-        )
+        graph.update_state(config, {"messages": [AIMessage(content=explanation)]})
 
     return {
         "urgency": result.get("triage_level") or "",
