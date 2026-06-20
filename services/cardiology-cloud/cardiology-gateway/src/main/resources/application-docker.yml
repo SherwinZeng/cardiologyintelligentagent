@@ -12,4 +12,4 @@ spring:
       discovery:
         enabled: true
     sentinel:
-      enabled: false
+      enabled: true

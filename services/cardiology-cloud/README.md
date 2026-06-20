@@ -571,11 +571,7 @@ mvn clean package -pl cardiology-gateway -am
 | `cardiology-auth` | ✅ 已完成（游客 + 短信） |
 | `cardiology-session` | ✅ 已完成（guest Redis + formal MySQL 分流、MQ 会话索引） |
 | `cardiology-record` | ✅ Worker；生命周期归档/清理 + `consultation_record` 总结 Job |
-| Sentinel 限流熔断 | 📋 规划中 |
-| 挂号 Worker | 📋 RabbitMQ + 爬虫代挂（无 HIS） |
-| payment 支付 | 📋 微信/支付宝 + **Seata TCC** |
-| 阿里云 OSS | 📋 影像 / PDF 对象存储 |
-| Sentinel 限流熔断 | 📋 Gateway + Feign |
+| Sentinel 限流熔断 | ✅ Gateway 问诊/Auth 限流 + Feign 降级（[sentinel-setup.md](../../docs/sentinel-setup.md)） |
 | Seata TCC | 📋 Try-Confirm-Cancel · 支付 + 挂号任务 |
 
 ---

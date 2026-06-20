@@ -123,6 +123,19 @@ services:
     networks:
       - cardiology-net
 
+  sentinel-dashboard:
+    # 国内 Docker Hub 镜像常 403；可用华为云同步镜像
+    image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/bladex/sentinel-dashboard:1.8.6
+    platform: linux/amd64
+    container_name: cardiology-sentinel-dashboard
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+    ports:
+      - "8858:8858"
+    networks:
+      - cardiology-net
+
 networks:
   cardiology-net:
     name: cardiology-net

@@ -1,0 +1,15 @@
+{
+  "folders": [
+    {
+      "name": "cardiology-cloud",
+      "path": "."
+    },
+    {
+      "name": "repo-root",
+      "path": "../../"
+    }
+  ],
+  "settings": {
+    "markdown.preview.security.level": "allowLocalFiles"
+  }
+}

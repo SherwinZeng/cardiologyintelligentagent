@@ -82,6 +82,15 @@ public class GeneralUnderstandingServiceImpl implements GeneralUnderstandingServ
             }
             BaseResponse<GeneralUnderstandingResponse> generalUnderstandingResponseBaseResponse =
                     drfAgentFeignClient.generalUnderstanding(token, generalUnderstandingRequestParams);
+            if (generalUnderstandingResponseBaseResponse == null
+                    || generalUnderstandingResponseBaseResponse.getCode() != ResponseCode.SUCCESS
+                    || generalUnderstandingResponseBaseResponse.getData() == null) {
+                String message = generalUnderstandingResponseBaseResponse != null
+                        && generalUnderstandingResponseBaseResponse.getMessage() != null
+                        ? generalUnderstandingResponseBaseResponse.getMessage()
+                        : "铭铭暂时繁忙，请稍后再试";
+                throw new ChatBusinessException(ResponseCode.SERVICE_UNAVAILABLE, message);
+            }
             String explanation = generalUnderstandingResponseBaseResponse.getData().getExplanation();
             if (AuthHeaderSupport.isGuest(userType)) {
                 guestChatSessionStore.appendAssistantMessage(

@@ -24,6 +24,17 @@ spring:
         acknowledge-mode: manual
         prefetch: 10
 
+  cloud:
+    sentinel:
+      enabled: true
+      eager: true
+      transport:
+        dashboard: ${SENTINEL_DASHBOARD_HOST:127.0.0.1}:${SENTINEL_DASHBOARD_PORT:8858}
+
+feign:
+  sentinel:
+    enabled: true
+
 mybatis-plus:
   mapper-locations: classpath:mapper/*.xml
 

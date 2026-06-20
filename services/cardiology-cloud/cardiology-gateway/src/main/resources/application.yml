@@ -31,6 +31,15 @@ spring:
               args:
                 retries: 1
                 statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
+        - id: cardiology-session-understanding
+          uri: lb://cardiology-session-server
+          predicates:
+            - Path=/chat/generalUnderstanding/**
+          filters:
+            - name: Retry
+              args:
+                retries: 1
+                statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
         - id: cardiology-session
           uri: lb://cardiology-session-server
           predicates:

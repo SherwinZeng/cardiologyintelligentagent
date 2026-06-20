@@ -24,6 +24,15 @@ spring:
               args:
                 retries: 1
                 statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
+        - id: cardiology-session-understanding
+          uri: lb://cardiology-session-server
+          predicates:
+            - Path=/chat/generalUnderstanding/**
+          filters:
+            - name: Retry
+              args:
+                retries: 1
+                statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
         - id: cardiology-session
           uri: lb://cardiology-session-server
           predicates:
@@ -33,6 +42,20 @@ spring:
               args:
                 retries: 1
                 statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
+    sentinel:
+      enabled: true
+      eager: true
+      transport:
+        dashboard: ${SENTINEL_DASHBOARD_HOST:127.0.0.1}:${SENTINEL_DASHBOARD_PORT:8858}
+      datasource:
+        gw-flow:
+          nacos:
+            server-addr: ${SPRING_CLOUD_NACOS_SERVER_ADDR:127.0.0.1:8848}
+            dataId: sentinel-gateway-flow-rules.json
+            groupId: SENTINEL_GROUP
+            data-type: json
+            rule-type: gw-flow
+
 auth:
   guest:
     key: "cardiology:guest:session:"

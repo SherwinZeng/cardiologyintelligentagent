@@ -1,0 +1,11 @@
+{
+  "folders": [
+    {
+      "name": "CardiologyIntelligentAgent",
+      "path": "."
+    }
+  ],
+  "settings": {
+    "markdown.preview.security.level": "allowLocalFiles"
+  }
+}

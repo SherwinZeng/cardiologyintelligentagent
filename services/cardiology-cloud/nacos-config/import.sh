@@ -29,4 +29,16 @@ for file in "${CONFIG_DIR}"/*.yaml; do
   echo ""
 done
 
+for file in "${CONFIG_DIR}"/sentinel-*.json; do
+  [ -f "${file}" ] || continue
+  data_id="$(basename "${file}")"
+  echo "[nacos-import] publish ${data_id}"
+  curl -sf -X POST "${NACOS_ADDR}/nacos/v1/cs/configs" \
+    -F "dataId=${data_id}" \
+    -F "group=SENTINEL_GROUP" \
+    -F "type=json" \
+    -F "content=<${file}"
+  echo ""
+done
+
 echo "[nacos-import] done"

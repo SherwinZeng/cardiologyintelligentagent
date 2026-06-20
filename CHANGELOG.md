@@ -6,6 +6,23 @@
 
 ## [Unreleased]
 
+## [0.3.2-beta.1] - 2026-06-20
+
+### Added
+
+- **Sentinel** Gateway 入口限流：Nacos `sentinel-gateway-flow-rules.json`；问诊 `cardiology-session-understanding` 20 QPS、`cardiology-auth` 30 QPS。
+- Session **Feign Sentinel 降级**：`DRFAgentFeignFallbackFactory`，ai-agent 不可用时返回 503「铭铭暂时繁忙…」。
+- `SentinelGatewayConfiguration`：Gateway 限流统一 429 响应文案。
+- [docs/sentinel-setup.md](docs/sentinel-setup.md)：Nacos 三套配置说明（Gateway YAML / 限流 JSON / Session YAML）。
+- `docker-compose`：`sentinel-dashboard` 本地可选监控（华为云镜像）。
+- `cardiology-monorepo.code-workspace`：多根工作区，便于根目录 README 预览图在子目录工作区中显示。
+
+### Changed
+
+- Gateway 路由拆分：`/chat/generalUnderstanding/**` 独立路由，其余 `/chat/**` 不限流，快速切会话不再误触发 429。
+- README **界面预览**：四张截图统一 1800×886（欢迎 / 登录 / 智能问诊 / 问诊记录）。
+- `nacos-config`：Gateway / Session Sentinel 数据源；`import.sh` 支持发布 `sentinel-*.json`。
+
 ## [0.3.1-beta.1] - 2026-06-20
 
 ### Added

@@ -11,7 +11,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 
 
-@FeignClient(name = "drf-agent", url = "${cardiology.ai-agent.base-url}")
+@FeignClient(
+        name = "drf-agent",
+        url = "${cardiology.ai-agent.base-url}",
+        fallbackFactory = DRFAgentFeignFallbackFactory.class
+)
 public interface DRFAgentFeignClient {
 
     @PostMapping("general-understanding/")
