@@ -46,6 +46,7 @@
 **/.nuxt/
 **/.output/
 **/.turbo/
+.tmp-shot/
 
 # Env & secrets
 **/.env

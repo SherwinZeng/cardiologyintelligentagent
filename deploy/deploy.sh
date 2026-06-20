@@ -11,8 +11,4 @@ fi
 
 cd "${ROOT_DIR}"
 
-if [[ "${1:-}" == "import" ]]; then
-  exec "${ROOT_DIR}/deploy/nacos-import.sh"
-fi
-
 docker compose -f docker-compose.prod.yaml --env-file deploy/.env "$@"

@@ -66,14 +66,13 @@ JDK 17 · Maven 3.9+ · Node.js 20+ · Yarn · Python 3.13+ · Poetry · Docker
 ### 1. 中间件
 
 ```bash
-# 仓库根目录：一键启动 + 导入 Nacos（含 Sentinel）
-chmod +x scripts/local-docker-up.sh deploy/nacos-import.sh
+# 仓库根目录：一键启动中间件
+chmod +x scripts/local-docker-up.sh
 ./scripts/local-docker-up.sh
 ```
 
-或 `docker compose up -d` 后执行 `./deploy/nacos-import.sh`。  
 认证服务需独立库 `cardiology-auth`（见 README）。  
-**本地**：短信在 `cardiology-auth-server.yaml` 填写阿里云 AK 及 `auth.sms`。  
+**本地**：短信在 `cardiology-auth` 的 `application.yml` 填写阿里云 AK 及 `auth.sms`。  
 **生产 Docker**：`deploy/.env` + `./deploy/deploy.sh up -d --build`（见 [deploy/README.md](deploy/README.md)）。
 
 ### 2. 后端与 AI

@@ -70,11 +70,6 @@
 ```text
 cardiology-cloud/
 ├── pom.xml
-├── nacos-config/
-│   ├── cardiology-gateway-server.yaml
-│   ├── cardiology-auth-server.yaml
-│   ├── cardiology-session-server.yaml
-│   └── cardiology-record-server.yaml
 ├── cardiology-cloud-common/
 │   ├── cardiology-cloud-common-data/      # 统一响应、全局异常、ChatSession/Message 公共实体
 │   ├── cardiology-cloud-common-infra/     # Redis + RabbitMQ 自动配置、MQ 事件 DTO
@@ -259,9 +254,9 @@ Lua 脚本：`resources/lua/guest_create_session.lua`、`guest_append_user_messa
 
 ### 配置
 
-将 `nacos-config/` 下 YAML 导入 Nacos（**local** profile）。网关 `jwt.sign-key` 须与 auth 一致。
+业务配置在各服务 `src/main/resources/application*.yml`；Nacos **仅服务发现**。网关 `jwt.sign-key` 须与 auth 一致。
 
-**Docker 生产**（profile `docker`）与本地相同，从 Nacos 读取 `nacos-config/*.yaml`；`deploy/.env` 通过 `${JWT_SIGN_KEY}`、`${ALIYUN_ACCESS_KEY_*}` 等占位符注入密钥。首次部署由 `nacos-init` 自动导入。
+**Docker 生产**（profile `docker`）：`application-docker.yml` + `deploy/.env` 注入 `${JWT_SIGN_KEY}`、`${ALIYUN_ACCESS_KEY_*}` 等。
 
 **RabbitMQ 拓扑（同一 Exchange，两个 Queue，由 common-infra 在 `cardiology.mq.enabled=true` 时声明）：**
 
