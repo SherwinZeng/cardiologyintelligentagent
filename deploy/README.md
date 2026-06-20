@@ -12,7 +12,7 @@ Internet :80
 └───┬──────────────────────────────────────────┘
     │
 ┌───▼──────────────────────────────────────────┐
-│ gateway :30000                                │
+│ gateway :30000（Sentinel 问诊/Auth 限流）     │
 └───┬──────────────────────────────────────────┘
     │
 ┌───▼──────────────────────────────────────────┐
@@ -25,6 +25,7 @@ Internet :80
     │
 ┌───▼──────────────────────────────────────────┐
 │ MySQL · Redis · PostgreSQL · RabbitMQ · Nacos │
+│ （可选 Sentinel Dashboard，仅内网）           │
 └──────────────────────────────────────────────┘
 ```
 
@@ -57,15 +58,15 @@ chmod +x deploy/deploy.sh
 > 首次构建 ai-agent 可能较久（Java 单次 rebuild 约 20～40 分钟）。Java 服务使用 **`SPRING_PROFILES_ACTIVE=docker`**，注册到 **Nacos**，网关通过 **`lb://`** 服务发现路由。  
 > 容器 `Up` 后网关/auth 仍可能需 **1～2 分钟** 才就绪，过早访问可能短暂 502。
 
-### 已经上线一半 / 服务器已有旧代码
+### 已经上线一半 / 服务器已有旧代码（**v0.3.2-beta.1**）
 
-如果服务器已经 clone 过仓库，不要直接删数据卷；先切到要发布的分支，再重建服务：
+如果服务器已经 clone 过仓库，不要直接删数据卷；先切到要发布的分支或 tag，再 **导入 Nacos（含 Sentinel 规则）** 并重建服务：
 
 ```bash
 cd ~/CardiologyIntelligentAgent
-git fetch origin
-git checkout feat/v0.3-dialogue-core
-git pull --ff-only origin feat/v0.3-dialogue-core
+git fetch origin --tags
+git checkout v0.3.2-beta.1
+# 或仍在功能分支：git checkout feat/v0.3.1-dialogue-stability && git pull --ff-only
 
 cp -n deploy/.env.example deploy/.env
 # 重点补齐/核对：MYSQL_*、POSTGRES_*、RABBITMQ_*、JWT_SIGN_KEY、DJANGO_SECRET_KEY、DEEPSEEK_API_KEY
@@ -76,7 +77,15 @@ chmod +x deploy/deploy.sh deploy/nacos-import.sh
 ./deploy/deploy.sh ps
 ```
 
+**v0.3.2 新增 Sentinel**：`nacos-import` 会发布 `sentinel-gateway-flow-rules.json`（`SENTINEL_GROUP`）及 Gateway 双路由配置；导入后 **必须重建 gateway / session**。详见 [docs/sentinel-setup.md](../docs/sentinel-setup.md)。
+
 这版 AI Agent 使用 PostgreSQL 保存 LangGraph checkpoint；如果旧服务器没有 `postgres` 容器，`up -d --build` 会自动创建。不要执行 `down -v`，否则会删除 MySQL/PostgreSQL 等数据卷。
+
+若从 v0.3.1 之前升级且未跑过问诊记录表，按需执行：
+
+```bash
+docker exec -i cardiology-mysql mysql -u cardiology -p cardiology < docker/mysql/migrations/05-consultation-record.sql
+```
 
 ### 无 Git 更新（打包上传）
 
@@ -109,8 +118,8 @@ docker tag docker.m.daocloud.io/library/redis:7.2-alpine redis:7.2-alpine
 
 **Nacos 配置仓库路径**：[`services/cardiology-cloud/nacos-config/`](../services/cardiology-cloud/nacos-config/)
 
-- **首次 `up`**：`nacos-init` 容器自动把 4 份 YAML 导入 Nacos，Java 服务再启动。
-- **改配置后**：`./deploy/nacos-import.sh` 重新发布，然后重启对应 Java 服务（或 `@RefreshScope` 字段可热刷）。
+- **首次 `up`**：`nacos-init` 容器自动导入 **4 份 YAML** + **`sentinel-gateway-flow-rules.json`**（`SENTINEL_GROUP`），Java 服务再启动。
+- **改配置后**（含 Sentinel 限流阈值、Gateway 路由）：`./deploy/nacos-import.sh` 重新发布，然后 **重启 gateway / session**（路由变更需重启 gateway）。
 
 **`deploy/.env` 必填**：`MYSQL_*`、`POSTGRES_*`、`RABBITMQ_*`、`JWT_SIGN_KEY`（≥32 字符）、`DJANGO_SECRET_KEY`、`DEEPSEEK_API_KEY`、`ALIYUN_ACCESS_KEY_*`（短信）。
 
@@ -151,8 +160,36 @@ docker exec -i cardiology-mysql mysql -u cardiology -p cardiology < docker/mysql
 ## 更新发布
 
 ```bash
-git pull
+cd ~/CardiologyIntelligentAgent
+git fetch origin --tags
+git checkout v0.3.2-beta.1   # 或你的目标分支/tag
+./deploy/nacos-import.sh      # 配置/Sentinel 规则有变时必跑
 ./deploy/deploy.sh up -d --build
+# 仅改了 Nacos 且未重建镜像时：
+# ./deploy/deploy.sh restart cardiology-gateway cardiology-session
+```
+
+## Sentinel（v0.3.2+）
+
+| 项 | 说明 |
+|----|------|
+| 限流位置 | Gateway：`/chat/generalUnderstanding/**` 20 QPS；`/auth/**` 30 QPS |
+| 降级 | Session Feign：ai-agent 不可用 → 503 |
+| 规则文件 | Nacos `sentinel-gateway-flow-rules.json` · Group **`SENTINEL_GROUP`** |
+| 接入文档 | [docs/sentinel-setup.md](../docs/sentinel-setup.md) |
+| Dashboard | 生产 Compose 含 `sentinel-dashboard`（**默认不映射公网端口**）；内网调试可临时开放 8858 |
+
+限流 **不依赖** Dashboard；连不上 Dashboard 时日志可能有 WARN，**不影响限流**。
+
+验证：
+
+```bash
+# 连发问诊应正常；极端压测才可能 429
+curl -s -o /dev/null -w "%{http_code}\n" \
+  -X POST "http://<IP>/api/chat/generalUnderstanding/v1" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"uid":"guest-demo-001","session":"session-001","message":"测试"}'
 ```
 
 ## HTTPS
@@ -193,6 +230,8 @@ docker compose up -d   # 根目录 docker-compose.yaml
 | 短信发不出 | 配置 `ALIYUN_ACCESS_KEY_ID/SECRET` 后 rebuild auth；`docker logs cardiology-auth \| grep 短信` |
 | 前端空白 | `./deploy/deploy.sh logs frontend` |
 | AI 无响应 | 查 `DEEPSEEK_API_KEY`、`DJANGO_ALLOWED_HOSTS`、`postgres` 健康状态，以及 `./deploy/deploy.sh logs ai-agent` |
+| 问诊 429「人数较多」 | Sentinel 限流；调 Nacos `sentinel-gateway-flow-rules.json` 中 `count`，`nacos-import` 后重启 gateway |
+| 快速切会话也 429 | Gateway 路由未更新：确认 `cardiology-gateway-server.yaml` 含 `cardiology-session-understanding` 路由并重建 gateway |
 | Java 反复重启 | `docker logs cardiology-auth`；查 MySQL 密码、fat jar |
 
 ## 相关文件

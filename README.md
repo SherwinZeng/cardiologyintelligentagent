@@ -671,17 +671,18 @@ curl -X POST http://127.0.0.1:30000/chat/generalUnderstanding/v1 \
 
 ## 部署
 
-生产环境使用 [`docker-compose.prod.yaml`](docker-compose.prod.yaml)：
+生产环境使用 [`docker-compose.prod.yaml`](docker-compose.prod.yaml)（**当前推荐 tag：`v0.3.2-beta.1`**）：
 
 ```bash
 cp deploy/.env.example deploy/.env   # 填写数据库、JWT、DEEPSEEK_API_KEY 等
-chmod +x deploy/deploy.sh
+chmod +x deploy/deploy.sh deploy/nacos-import.sh
+./deploy/nacos-import.sh               # 导入 Nacos + Sentinel 规则
 ./deploy/deploy.sh up -d --build
 ```
 
 浏览器访问 `http://<服务器IP>/`（Nginx 静态页 + `/api` 反代 gateway）。  
 **Flutter App** 配置 `API_BASE_URL=https://<域名>/api`（或开发环境 `http://<IP>:30000`），与 Web **共用 JWT 与接口**。  
-HTTPS、已有数据卷迁移、常见问题见 [deploy/README.md](deploy/README.md)。
+HTTPS、Sentinel、已有数据卷迁移、常见问题见 [deploy/README.md](deploy/README.md)。
 
 ---
 

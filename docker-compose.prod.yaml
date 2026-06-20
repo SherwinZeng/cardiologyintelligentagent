@@ -21,6 +21,8 @@ x-java-docker-env: &java_docker_env
   SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER}
   SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
   CARDIOLOGY_AI_AGENT_BASE_URL: http://ai-agent:8000/api/cardiology/
+  SENTINEL_DASHBOARD_HOST: sentinel-dashboard
+  SENTINEL_DASHBOARD_PORT: 8858
   # 注册到 Docker 网桥 IP，避免误选 127.0.0.1
   SPRING_CLOUD_INETUTILS_PREFERRED_NETWORKS: 172.
 
@@ -152,6 +154,19 @@ services:
       timeout: 5s
       retries: 10
       start_period: 30s
+    networks:
+      - cardiology-net
+
+  sentinel-dashboard:
+    image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/bladex/sentinel-dashboard:1.8.6
+    platform: linux/amd64
+    container_name: cardiology-sentinel-dashboard
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+    # 仅内网调试时取消注释，勿对公网长期开放
+    # ports:
+    #   - "8858:8858"
     networks:
       - cardiology-net
 
