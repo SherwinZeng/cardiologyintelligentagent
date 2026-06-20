@@ -4,6 +4,7 @@ from cardiology_chat.graph.llm import all_user_text, has_keyword, latest_user_me
 from cardiology_chat.graph.routing.keywords import (
     GREETING_MARKERS,
     HISTORY_KEYWORDS,
+    LAB_INQUIRY_MARKERS,
     LAB_KEYWORDS,
     MEDICATION_KEYWORDS,
     OFF_TOPIC_KEYWORDS,
@@ -49,11 +50,14 @@ def resolve_route(state: CardiologyState) -> str:
     text_lower = text.lower()
     pure_greeting = bool(PURE_GREETING_RE.match(text))
     greeting_intent = pure_greeting or any(marker in text for marker in GREETING_MARKERS)
-    lab_intent = has_keyword(
-        text,
-        LAB_KEYWORDS + URGENT_LAB_KEYWORDS,
-        case_insensitive=True,
-        negation_aware=False,
+    lab_intent = (
+        any(marker in text for marker in LAB_INQUIRY_MARKERS)
+        or has_keyword(
+            text,
+            LAB_KEYWORDS + URGENT_LAB_KEYWORDS,
+            case_insensitive=True,
+            negation_aware=False,
+        )
     )
     medication_intent = has_keyword(
         text, MEDICATION_KEYWORDS, case_insensitive=True, negation_aware=False
@@ -83,14 +87,15 @@ def resolve_route(state: CardiologyState) -> str:
         and not off_topic
     )
 
+    # 明确的检查/筛查咨询优先于症状 sticky，避免「高血压要做什么检查」被上一轮胸闷带偏
+    if lab_intent:
+        return "lab"
     if symptom_followup or continuing_symptom:
         return "symptom"
     if lab_context and not pure_greeting:
         return "lab"
     if greeting_intent and not symptom_context:
         return "greeting"
-    if lab_intent:
-        return "lab"
     if medication_intent:
         return "medication"
     if history_intent:

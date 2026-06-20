@@ -1,5 +1,5 @@
-# Docker Compose（profile: docker）
-# 业务配置在 application.yml + 本文件；Nacos 仅做服务发现（lb://）
+# Docker 生产（profile: docker）
+# 业务配置：application.yml + 本文件 + deploy/.env；Nacos 仅服务发现
 
 spring:
   cloud:

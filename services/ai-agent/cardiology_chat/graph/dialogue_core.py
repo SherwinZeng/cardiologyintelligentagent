@@ -214,6 +214,18 @@ class ContextBuilder:
         policy = bundle.get("policy")
         if policy:
             lines.append(f"本轮对话策略：{policy}")
+
+        guide_rag = bundle.get("guide_rag")
+        if isinstance(guide_rag, list) and guide_rag:
+            lines.append("【指南检索参考】")
+            lines.append(
+                "以下片段来自心血管指南，请优先依据与用户问题最相关的条目作答；"
+                "忽略明显无关的评估/表格/设备说明；若无直接关联请说明并给一般性建议："
+            )
+            for index, excerpt in enumerate(guide_rag, start=1):
+                if isinstance(excerpt, str) and excerpt.strip():
+                    lines.append(f"{index}. {excerpt.strip()}")
+
         lines.append("请优先遵守结构化上下文；不要和用户已明确提供的信息冲突。")
         return "\n".join(lines)
 

@@ -45,6 +45,9 @@ public class ChatMessageEntity {
     /** 免责声明（assistant） */
     private String disclaimer;
 
+    /** 参考指南中文名（assistant），JSON 数组字符串 */
+    private String guideReferences;
+
     /** 消息创建时间 */
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createdAt;

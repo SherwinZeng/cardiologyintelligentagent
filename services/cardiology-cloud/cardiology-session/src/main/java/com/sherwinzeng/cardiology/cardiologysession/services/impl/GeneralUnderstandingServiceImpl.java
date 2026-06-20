@@ -23,6 +23,7 @@ import com.sherwinzeng.cardiology.cardiologysession.store.GuestChatMessagePayloa
 import com.sherwinzeng.cardiology.cardiologysession.store.GuestChatSessionStore;
 import com.sherwinzeng.cardiology.cardiologysession.support.AuthHeaderSupport;
 import com.sherwinzeng.cardiology.cardiologysession.support.FormalChatSessionSupport;
+import com.sherwinzeng.cardiology.cardiologysession.support.GuideReferenceSupport;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
@@ -100,7 +101,8 @@ public class GeneralUnderstandingServiceImpl implements GeneralUnderstandingServ
                         generalUnderstandingResponseBaseResponse.getData().getUrgency(),
                         explanation,
                         generalUnderstandingResponseBaseResponse.getData().getAdvice(),
-                        generalUnderstandingResponseBaseResponse.getData().getDisclaimer()
+                        generalUnderstandingResponseBaseResponse.getData().getDisclaimer(),
+                        generalUnderstandingResponseBaseResponse.getData().getGuideReferences()
                 );
             } else {
                 ChatMessage assistantMsg = new ChatMessage();
@@ -112,6 +114,11 @@ public class GeneralUnderstandingServiceImpl implements GeneralUnderstandingServ
                 assistantMsg.setExplanation(explanation);
                 assistantMsg.setAdvice(generalUnderstandingResponseBaseResponse.getData().getAdvice());
                 assistantMsg.setDisclaimer(generalUnderstandingResponseBaseResponse.getData().getDisclaimer());
+                assistantMsg.setGuideReferences(
+                        GuideReferenceSupport.encode(
+                                generalUnderstandingResponseBaseResponse.getData().getGuideReferences()
+                        )
+                );
                 chatMessageMapper.insert(assistantMsg);
                 if (cardiologyMqProperties.isEnabled()) {
                     String preview = explanation == null || explanation.isEmpty() ? "" : explanation.length() > 80 ? explanation.substring(0, 80) + "....." : explanation;

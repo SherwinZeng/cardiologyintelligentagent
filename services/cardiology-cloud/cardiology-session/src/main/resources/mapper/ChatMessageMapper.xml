@@ -12,6 +12,7 @@
         explanation,
         advice,
         disclaimer,
+        guide_references,
         created_at
     </sql>
 

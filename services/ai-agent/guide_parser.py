@@ -4,6 +4,7 @@ from typing import List
 from langchain_core.documents import Document
 from langchain_unstructured import UnstructuredLoader
 
+from cardiology_chat.rag.text_normalize import normalize_pdf_text
 from configuration import settings
 from log.logger import get_app_logger
 
@@ -30,9 +31,9 @@ class GuidePDFParser:
             strategy="fast",
             languages=["chi_sim", "eng"],
             chunking_strategy="basic",
-            max_characters=1200,
-            new_after_n_chars=1500,
-            combine_text_under_n_chars=300,
+            max_characters=800,
+            new_after_n_chars=650,
+            combine_text_under_n_chars=150,
         )
         documents: List[Document] = []
         for doc in loader.lazy_load():
@@ -42,13 +43,17 @@ class GuidePDFParser:
 
     def _enrich_metadata(self, doc: Document) -> Document:
         source = doc.metadata.get("source") or doc.metadata.get("filename") or ""
-        if source:
-            doc.metadata["guide_name"] = Path(str(source)).stem
-        return doc
-
-
-if __name__ == "__main__":
-    parser = GuidePDFParser()
-    docs = parser.parse_guide_pdf_parser()
-    print(f"解析完成: {len(docs)} 个文本块, PDF 数量: {len(parser.pdf_paths)}")
+        guide_name = Path(str(source)).stem if source else ""
+        # 只保留简单标量字段，避免 Unstructured 的 list/array metadata 导致 Milvus 建库失败
+        metadata: dict[str, str | int] = {}
+        if guide_name:
+            metadata["guide_name"] = guide_name[:512]
+        page = doc.metadata.get("page_number")
+        if page is not None:
+            try:
+                metadata["page_number"] = int(page)
+            except (TypeError, ValueError):
+                pass
+        content = normalize_pdf_text(doc.page_content or "")
+        return Document(page_content=content, metadata=metadata)
 

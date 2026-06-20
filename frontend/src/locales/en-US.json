@@ -93,7 +93,8 @@
     "analysis": "Symptom Analysis",
     "advice": "Care Recommendation",
     "notes": "Important Notes",
-    "disclaimer": "This response is for health information only and is not a substitute for professional medical diagnosis or prescription. Seek medical care if needed."
+    "disclaimer": "This response is for health information only and is not a substitute for professional medical diagnosis or prescription. Seek medical care if needed.",
+    "guideReferences": "Reference guidelines"
   },
   "urgency": {
     "low": "Low Urgency",

@@ -6,6 +6,34 @@
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-06-20
+
+首个正式版：指南 RAG 全栈打通、生产部署文档完善、Docker 生产配置与本地 Milvus 编排就绪。
+
+### Added
+
+- **指南 RAG 参考展示**：ai-agent 返回 `guideReferences`；前端免责声明下方展示中文指南名。
+- `chat_message.guide_references` 列（formal MySQL）；guest Redis 消息 JSON 同步字段。
+- `GuideReferenceSupport`：List ↔ JSON 字符串编解码（不依赖 MyBatis TypeHandler）。
+- `cardiology_chat/rag/`：Milvus 检索、重排、智谱 Embedding、中文指南名映射。
+- `scripts/ingest_guides.py`、`scripts/test_rag_retrieval.py`：指南入库与 RAG 验证。
+- `scripts/pack-deploy.sh`、`scripts/pull-milvus-images.sh`：打包部署与 Milvus 镜像预拉。
+- MySQL 迁移 `06-chat-message-guide-references.sql`。
+- Java 四服务 `bootstrap-docker.yml`：Docker 生产关闭 Nacos 配置中心。
+
+### Changed
+
+- **路由**：「做什么检查 / 需要查什么」等优先走 `lab`，避免被 symptom sticky 带偏。
+- **本地 Java**：Nacos 配置写入 `bootstrap.yml`；Docker 生产 `bootstrap-docker.yml` + `application-docker.yml`。
+- **deploy/README.md**：Milvus/RAG 入库、Postgres 密码、503 排查、磁盘清理、智谱余额等运维说明。
+- **README.md** 部署章节：指向 `pack-deploy.sh` 与 RAG 运维文档。
+- 本地 `docker-compose.yaml` 增加 Milvus（etcd + minio + standalone）。
+- ai-agent `dispatch` 日志输出 RAG 命中与 `guideReferences`。
+
+### Removed
+
+- `cardiology-monorepo.code-workspace`（IDE 工作区文件，改用文件夹直接打开项目）。
+
 ## [0.3.3-beta.1] - 2026-06-20
 
 ### Added
@@ -106,7 +134,7 @@
 ### Known Gaps
 
 - Java 单元测试体系仍需补齐；当前发布检查先以编译为主。
-- 指南 RAG、Milvus、多模态影像解读、支付挂号仍在后续路线图中。
+- 多模态影像解读、支付挂号仍在后续路线图中。
 
 ## Historical Version Map
 

@@ -6,18 +6,17 @@
   3. 写入 state['route'] 供 conditional_edges 分支
 """
 
-import logging
-
 from cardiology_chat.graph.dialogue_core import ContextBuilder, DialoguePolicy, MemoryExtractor
 from cardiology_chat.graph.llm import latest_user_message
 from cardiology_chat.graph.routing.rules import resolve_route
 from cardiology_chat.graph.state import CardiologyState
+from cardiology_chat.rag.guide_retriever import retrieve_guide_context
+from log.logger import get_app_logger
 
-logger = logging.getLogger(__name__)
+logger = get_app_logger()
 
 
 def route_after_dispatch(state: CardiologyState) -> str:
-    """conditional_edges 回调：读取 dispatch 写入的 route。"""
     return state["route"]
 
 
@@ -38,6 +37,23 @@ def clinical_dispatch_node(state: CardiologyState) -> dict:
 
     context_state = {**decision_state, "route": route, "dialogue_policy": policy}
     context_bundle = ContextBuilder.build(context_state, route, policy)
+    guide_result = retrieve_guide_context(text, route)
+    if guide_result.excerpts:
+        context_bundle["guide_rag"] = guide_result.excerpts
+        context_bundle["guide_references"] = guide_result.guide_references
+        logger.info(
+            "guide RAG 命中 | route=%s query=%s hits=%d guides=%s",
+            route,
+            text[:60],
+            len(guide_result.excerpts),
+            guide_result.guide_references,
+        )
+    else:
+        logger.info(
+            "guide RAG 未命中 | route=%s query=%s",
+            route,
+            text[:60],
+        )
     structured = memory_updates.get("structured_memory") or {}
     profile = structured.get("profile") if isinstance(structured, dict) else {}
     medical_profile = structured.get("medical_profile") if isinstance(structured, dict) else {}

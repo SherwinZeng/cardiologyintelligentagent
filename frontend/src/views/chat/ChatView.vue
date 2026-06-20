@@ -564,6 +564,7 @@ function buildAssistantMessage(data: IGeneralUnderstandingResponse): ChatMessage
       advice: data.advice,
       notes: data.disclaimer,
     },
+    guideReferences: data.guideReferences?.length ? data.guideReferences : undefined,
     animate: true,
   };
 }

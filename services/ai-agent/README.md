@@ -16,7 +16,7 @@
 
 `services/ai-agent/`
 
-[简介](#简介) · [LangGraph](#langgraph-工作流) · [多轮 LLM 统一架构](#多轮-llm-统一架构) · [graph 目录](#graph-目录导读) · [维护指南](#维护指南) · [启动](#快速开始) · [API](#api-文档)
+[简介](#简介) · [LangGraph](#langgraph-工作流) · [指南 RAG](#指南-rag) · [多轮 LLM 统一架构](#多轮-llm-统一架构) · [graph 目录](#graph-目录导读) · [维护指南](#维护指南) · [启动](#快速开始) · [API](#api-文档)
 
 </div>
 
@@ -31,7 +31,8 @@
 - 症状采集与分诊（`green` / `yellow` / `red`）
 - **用药咨询**（CCB / ARB 等，独立 `medication` 节点）
 - 既往史与危险因素询问
-- 检查 / 化验报告解读
+- 检查 / 化验报告解读（含「做什么检查」类筛查咨询，走 `lab` route）
+- 指南 RAG：Milvus 检索心血管 PDF 指南，注入 LLM 并返回中文指南名
 - 寒暄、自我介绍
 - 非心血管话题拒答
 - 多轮对话（PostgreSQL checkpointer；Java 不传 `history`）
@@ -45,7 +46,7 @@
 
 | 接口 | 路由 | 模型 | 状态 |
 |------|------|------|------|
-| 普通问诊 | `POST /general-understanding/` | LangGraph + **DeepSeek V4 Flash** | ✅ |
+| 普通问诊 | `POST /general-understanding/` | LangGraph + **DeepSeek V4 Flash** + Milvus RAG | ✅ |
 | 深度推理 | `POST /reasoning/` | **DeepSeek Pro** | 📋 |
 | 多模态 | `POST /multimodal/` | **通义千问 Qwen 3.7 Plus** | 📋 |
 
@@ -95,6 +96,7 @@ flowchart LR
 | Agent | LangGraph · LangChain |
 | LLM | **DeepSeek V4 Flash**（文本）· **DeepSeek Pro**（推理，规划）· **通义千问 Qwen 3.7 Plus**（多模态，规划） |
 | 多轮记忆 | **PostgreSQL checkpointer**（`PostgresSaver`，`thread_id=uid:session`）；Java 消息库仅用于前端展示 |
+| 指南 RAG | **Milvus** + 智谱 Embedding；`cardiology_chat/rag/` |
 | 鉴权 | Redis 内部 token |
 | 包管理 | Poetry |
 
@@ -112,10 +114,11 @@ views.py  POST general-understanding/
             → MemoryExtractor.commit（称呼/年龄/慢病）
             → resolve_route + DialoguePolicy.resolve
             → ContextBuilder.build → context_bundle
+            → retrieve_guide_context（Milvus 检索 + 重排）→ guide_rag / guide_references
         → symptom / lab / greeting … 某一个节点
         → END
         → update_state 写入 AIMessage（铭铭回复）
-    → 返回 urgency / explanation / advice / disclaimer
+    → 返回 urgency / explanation / advice / disclaimer / guideReferences
 ```
 
 | 想搞懂… | 先看文件 |
@@ -404,6 +407,42 @@ cardiology_chat/graph/
 | `explanation` | `clinical_impression` |
 | `advice` | `management_advice` |
 | `disclaimer` | `medical_disclaimer` |
+| `guideReferences` | `context_bundle.guide_references`（RAG 命中时的中文指南名列表） |
+
+---
+
+## 指南 RAG
+
+每轮在 `clinical_dispatch_node` 对 `symptom / lab / medication / history` 路由检索 Milvus，将片段写入 `context_bundle.guide_rag` 供 LLM 参考，同时将去重后的中文指南名写入 `guide_references` 返回 Java / 前端。
+
+```text
+用户问题
+  → retrieve_guide_context（向量 top-24 → 关键词/主题重排 → top-5）
+  → ContextBuilder.as_system_prompt 追加【指南检索参考】
+  → lab / symptom 等节点 LLM 生成
+  → API 返回 guideReferences（如 ["国家基层高血压防治管理指南（2025版）"]）
+```
+
+| 模块 | 路径 | 说明 |
+|------|------|------|
+| PDF 解析入库 | `guide_parser.py` · `scripts/ingest_guides.py` | Unstructured 分块 + 智谱 Embedding |
+| 向量库 | `cardiology_chat/rag/guide_store.py` | Milvus collection `cardiology_guides` |
+| 检索 + 重排 | `cardiology_chat/rag/guide_retriever.py` · `guide_rerank.py` | `RAG_FETCH_K=24` → `RAG_TOP_K=5` |
+| 中文指南名 | `cardiology_chat/rag/guide_names.py` | PDF stem → 展示名映射 |
+| 路由 | `routing/rules.py` · `routing/keywords/lab.py` | 「做什么检查」等优先走 `lab`，不被 symptom sticky 带偏 |
+
+**本地验证：**
+
+**生产服务器入库**（Unstructured 在 ECS 上可能 422，推荐本机 pkl）见 [deploy/README.md](../../deploy/README.md#指南-rag-入库首次--更新-pdf-后)。
+
+```bash
+cd services/ai-agent
+poetry run python scripts/test_rag_retrieval.py "高血压要做什么检查" --dispatch
+poetry run python scripts/ingest_guides.py --recreate                    # 全量（需 UNSTRUCTURED + ZHIPU）
+poetry run python scripts/ingest_guides.py --recreate --skip-parse       # 用 .cache/parsed_guides.pkl + ZHIPU
+```
+
+未命中（`RAG_ENABLED=false`、Milvus 不可用、`greeting/fallback` route）时 `guideReferences` 为空数组，对话仍正常返回。
 
 ---
 
@@ -422,7 +461,9 @@ cardiology_chat/graph/
 | 红旗该触发没触发 | `prompts/symptom.py` + `nodes/intake/symptom.py` |
 | 检查危急值规则 | `prompts/lab.py` + `nodes/diagnostics/lab.py` |
 | 新增节点或改图结构 | `graph/builder.py` + 新建 `nodes/` 下文件 |
-| 曾祥瑞 / 寒暄彩蛋 | `prompts/fallback.py` + `prompts/llm/greeting_llm.py` |
+| 指南检索不准 / 无关片段 | `guide_rerank.py` + `configuration/settings.py` 权重；`tests/test_guide_rerank.py` |
+| 筛查类问题误走 symptom | `routing/keywords/lab.py`（`LAB_INQUIRY_MARKERS`）+ `tests/test_route_rules.py` |
+| 前端未展示参考指南 | 查 API `guideReferences`；MySQL `guide_references` 列是否已迁移 |
 
 **路由关键词**只维护 `routing/keywords/`；**优先级 / sticky** 只改 `rules.py`。PMH 布尔字段词表在 `prompts/history.py`（history 节点用）。
 
@@ -559,10 +600,15 @@ poetry run python manage.py runserver 0.0.0.0:8000
     "urgency": "yellow",
     "explanation": "...",
     "advice": "...",
-    "disclaimer": "..."
+    "disclaimer": "...",
+    "guideReferences": ["国家基层高血压防治管理指南（2025版）"]
   }
 }
 ```
+
+| 字段 | 说明 |
+|------|------|
+| `guideReferences` | RAG 命中时返回参考指南**中文名**列表；未命中为空数组 `[]` |
 
 ### 输出字段
 
@@ -572,6 +618,7 @@ poetry run python manage.py runserver 0.0.0.0:8000
 | `explanation` | `clinical_impression` | 主回复 |
 | `advice` | `management_advice` | 建议 |
 | `disclaimer` | `medical_disclaimer` | 免责声明 |
+| `guideReferences` | `context_bundle.guide_references` | 参考指南中文名（RAG 命中时） |
 
 ---
 
@@ -621,6 +668,11 @@ Python → 校验后删除
 | `DEEPSEEK_API_KEY` | 是 | DeepSeek Key |
 | `REDIS_HOST` | 是 | 内部 token 校验 |
 | `POSTGRES_*` / `POSTGRES_CHECKPOINTER_URI` | 是 | LangGraph checkpointer |
+| `ZHIPU_API_KEY` | RAG 时必填 | 智谱 Embedding |
+| `UNSTRUCTURED_API_KEY` | 入库时必填 | PDF 解析 |
+| `MILVUS_URI` | RAG 时必填 | 默认 `http://127.0.0.1:19530` |
+| `RAG_ENABLED` | 否 | 默认 `true` |
+| `RAG_TOP_K` / `RAG_FETCH_K` | 否 | 默认 5 / 24 |
 | `REDIS_PORT` | 否 | 默认 6379 |
 | `QIANWEN_API_KEY` | 否 | 多模态（规划） |
 | `LANGCHAIN_TRACING_V2` | 否 | LangSmith |
@@ -636,6 +688,7 @@ Python → 校验后删除
 | lab 条件流水线（科普跳过 risk/referral） | ✅ |
 | 用药咨询节点（medication） | ✅ |
 | 多轮 session（PostgreSQL checkpointer + LLM 12 条窗口） | ✅ |
+| 指南 RAG（Milvus + 重排 + guideReferences） | ✅ |
 | 内部 token 鉴权 | ✅ |
 | 寒暄 / 作者彩蛋 | ✅ |
 | graph 目录分层（routing / intake / diagnostics / response） | ✅ |

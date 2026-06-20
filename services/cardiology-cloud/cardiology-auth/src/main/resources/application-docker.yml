@@ -1,4 +1,5 @@
-# Docker Compose（profile: docker）
+# Docker 生产（profile: docker）
+# 业务配置：application.yml + 本文件 + deploy/.env 环境变量；Nacos 仅服务发现
 spring:
   cloud:
     nacos:
@@ -8,7 +9,7 @@ spring:
       discovery:
         enabled: true
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://mysql:3306/cardiology_auth?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai}
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://mysql:3306/cardiology-auth?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai}
     username: ${SPRING_DATASOURCE_USERNAME:root}
     password: ${SPRING_DATASOURCE_PASSWORD:root}
   data:

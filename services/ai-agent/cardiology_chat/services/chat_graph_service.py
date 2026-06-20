@@ -19,11 +19,17 @@ def invoke_general_understanding(uid: str, session: str, message: str) -> dict:
     if explanation:
         graph.update_state(config, {"messages": [AIMessage(content=explanation)]})
 
+    bundle = result.get("context_bundle") or {}
+    guide_references = bundle.get("guide_references") or []
+    if not isinstance(guide_references, list):
+        guide_references = []
+
     return {
         "urgency": result.get("triage_level") or "",
         "explanation": explanation,
         "advice": result.get("management_advice") or "",
         "disclaimer": result.get("medical_disclaimer") or "",
+        "guideReferences": [str(name) for name in guide_references if name],
     }
 
 

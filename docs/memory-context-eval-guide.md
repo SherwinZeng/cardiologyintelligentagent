@@ -20,7 +20,7 @@
 | **性别 `sex` 抽取** | 📋 | `ContextBuilder` 预留读路径，`MemoryExtractor` **尚未写入** |
 | **过敏 / 长期用药** | 📋 | schema 规划中有，extractor 未实现 |
 | **跨 session 用户级 profile** | 📋 | 等 Java 用户表或 `uid:profile` thread |
-| Milvus RAG | 📋 | P1，见 beta2-plan |
+| Milvus RAG | ✅ | `clinical_dispatch_node` 检索；`guideReferences` 持久化 + 前端展示 |
 
 ---
 

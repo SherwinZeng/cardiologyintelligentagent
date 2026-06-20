@@ -20,6 +20,7 @@
 **/htmlcov/
 **/media/
 **/staticfiles/
+services/ai-agent/data/
 **/volumes/
 
 # Cursor IDE（个人 AI 规则）
@@ -61,3 +62,8 @@
 .DS_Store
 Thumbs.db
 *.log
+
+# 本机 IDE / 部署产物（不影响运行）
+*.code-workspace
+cardiology-deploy.tgz
+services/ai-agent/.cache/

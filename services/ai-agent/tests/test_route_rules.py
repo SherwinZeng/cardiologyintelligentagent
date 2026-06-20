@@ -46,6 +46,18 @@ class RouteRulesTests(unittest.TestCase):
         route = resolve_route(_state("帮我看看这份心电图"))
         self.assertEqual(route, "lab")
 
+    def test_hypertension_screening_routes_lab(self):
+        route = resolve_route(_state("高血压要做什么检查"))
+        self.assertEqual(route, "lab")
+
+    def test_hypertension_screening_after_symptom_routes_lab(self):
+        state = _state("胸口闷痛怎么办", "高血压要做什么检查")
+        state["chief_complaint"] = "胸口闷痛"
+        state["route"] = "symptom"
+        state["triage_level"] = "yellow"
+        route = resolve_route(state)
+        self.assertEqual(route, "lab")
+
     def test_ambiguous_text_defaults_symptom(self):
         route = resolve_route(_state("有点担心"))
         self.assertEqual(route, DEFAULT_ROUTE)

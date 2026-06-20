@@ -163,6 +163,12 @@ watch(isTyping, (typing, wasTyping) => {
       <p v-if="showSections && message.role === 'assistant'" class="chat-message__disclaimer">
         {{ t('ai.disclaimer') }}
       </p>
+      <p
+        v-if="showSections && message.role === 'assistant' && message.guideReferences?.length"
+        class="chat-message__guide-refs"
+      >
+        {{ t('ai.guideReferences') }}：{{ message.guideReferences.join('、') }}
+      </p>
     </div>
   </article>
 </template>

@@ -124,6 +124,7 @@ export function toChatMessage(data: IChatMessageResponse): ChatMessage {
         advice: data.advice ?? undefined,
         notes: data.disclaimer ?? undefined,
       },
+      guideReferences: data.guideReferences?.length ? data.guideReferences : undefined,
     };
   }
 

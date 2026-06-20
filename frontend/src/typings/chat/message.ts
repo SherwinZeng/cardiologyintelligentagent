@@ -9,6 +9,7 @@ export interface IGeneralUnderstandingResponse {
   explanation: string;
   advice: string;
   disclaimer: string;
+  guideReferences?: string[];
 }
 
 export interface IChatMessageResponse {
@@ -19,6 +20,7 @@ export interface IChatMessageResponse {
   explanation?: string | null;
   advice?: string | null;
   disclaimer?: string | null;
+  guideReferences?: string[] | null;
   createdAt: string;
 }
 

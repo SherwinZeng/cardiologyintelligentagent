@@ -3,3 +3,11 @@ spring:
     name: cardiology-gateway-server
   main:
     web-application-type: reactive
+  cloud:
+    nacos:
+      server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+      config:
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+        file-extension: yaml
+        group: DEFAULT_GROUP
+        enabled: ${NACOS_CONFIG_ENABLED:true}

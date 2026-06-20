@@ -2,7 +2,7 @@
 
 from cardiology_chat.graph.routing.keywords.greeting import GREETING_MARKERS, PURE_GREETING_RE
 from cardiology_chat.graph.routing.keywords.history import HISTORY_KEYWORDS
-from cardiology_chat.graph.routing.keywords.lab import LAB_KEYWORDS
+from cardiology_chat.graph.routing.keywords.lab import LAB_INQUIRY_MARKERS, LAB_KEYWORDS
 from cardiology_chat.graph.routing.keywords.medication import MEDICATION_KEYWORDS
 from cardiology_chat.graph.routing.keywords.off_topic import OFF_TOPIC_KEYWORDS
 from cardiology_chat.graph.routing.keywords.symptom import (
@@ -15,6 +15,7 @@ __all__ = [
     "GREETING_MARKERS",
     "SYMPTOM_KEYWORDS",
     "SYMPTOM_FOLLOWUP_MARKERS",
+    "LAB_INQUIRY_MARKERS",
     "LAB_KEYWORDS",
     "MEDICATION_KEYWORDS",
     "HISTORY_KEYWORDS",

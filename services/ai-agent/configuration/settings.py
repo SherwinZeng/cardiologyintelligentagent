@@ -32,6 +32,11 @@ ZHIPU_EMBEDDING_DIMENSIONS = int(os.getenv("ZHIPU_EMBEDDING_DIMENSIONS", "1024")
 MILVUS_URI = os.getenv("MILVUS_URI", "http://127.0.0.1:19530")
 MILVUS_TOKEN = os.getenv("MILVUS_TOKEN", "")
 MILVUS_COLLECTION = os.getenv("MILVUS_COLLECTION", "cardiology_guides")
+RAG_ENABLED = os.getenv("RAG_ENABLED", "true").lower() in {"1", "true", "yes", "on"}
+RAG_TOP_K = int(os.getenv("RAG_TOP_K", "5"))
+RAG_FETCH_K = int(os.getenv("RAG_FETCH_K", "24"))
+RAG_VECTOR_WEIGHT = float(os.getenv("RAG_VECTOR_WEIGHT", "0.35"))
+RAG_KEYWORD_WEIGHT = float(os.getenv("RAG_KEYWORD_WEIGHT", "0.65"))
 
 REDIS_HOST = os.getenv("REDIS_HOST", "127.0.0.1")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))

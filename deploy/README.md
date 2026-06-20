@@ -20,12 +20,13 @@ Internet :80
 └───┬──────────────────────────────────────────┘
     │
 ┌───▼──────────────────────────────────────────┐
-│ ai-agent :8000                                │
+│ ai-agent :8000（LangGraph checkpoint → PG）   │
 └───┬──────────────────────────────────────────┘
     │
 ┌───▼──────────────────────────────────────────┐
 │ MySQL · Redis · PostgreSQL · RabbitMQ · Nacos │
-│ （可选 Sentinel Dashboard，仅内网）           │
+│ Milvus（etcd + minio + standalone，指南 RAG） │
+│ （Sentinel Dashboard，仅内网 SSH 隧道）       │
 └──────────────────────────────────────────────┘
 ```
 
@@ -35,7 +36,7 @@ Internet :80
 
 - Linux（推荐 Ubuntu 22.04+）
 - Docker 24+、Docker Compose v2
-- **4 核 16G** 推荐
+- **4 核 16G** 推荐；系统盘建议 **≥70G**（ai-agent 镜像含 PyTorch 等依赖，首次 `--build` 占用大）
 - 安全组开放 **80**（HTTPS 见下文）
 
 ## 首次部署
@@ -43,7 +44,7 @@ Internet :80
 ```bash
 git clone https://github.com/SherwinZeng/cardiologyintelligentagent.git CardiologyIntelligentAgent
 cd CardiologyIntelligentAgent
-git checkout master   # 或 tag v0.3.3-beta.1
+git checkout master   # 或 tag v1.0.0
 
 cp deploy/.env.example deploy/.env
 # 编辑 deploy/.env：MYSQL_*、POSTGRES_*、JWT_SIGN_KEY、DEEPSEEK_API_KEY、ALIYUN_ACCESS_KEY_* 等
@@ -85,23 +86,55 @@ docker exec -i cardiology-mysql mysql -u cardiology -p cardiology < docker/mysql
 ### 无 Git 更新（打包上传）
 
 ```bash
-# 本机
-tar czf cardiology-deploy.tgz --exclude='.git' --exclude='node_modules' --exclude='frontend/node_modules' --exclude='.cursor' .
+# 本机（推荐脚本，已排除 node_modules / target / deploy/.env）
+chmod +x scripts/pack-deploy.sh
+./scripts/pack-deploy.sh
 scp cardiology-deploy.tgz root@<服务器IP>:~/
 
 # 服务器
-cd ~/CardiologyIntelligentAgent && tar xzf ~/cardiology-deploy.tgz
+mkdir -p ~/CardiologyIntelligentAgent && cd ~/CardiologyIntelligentAgent
+tar xzf ~/cardiology-deploy.tgz
+cp -n deploy/.env.example deploy/.env   # 首次；已有 deploy/.env 勿覆盖
+vim deploy/.env
 ./deploy/deploy.sh up -d --build
 ```
 
+Mac 打包后在 Linux 解压时可能出现大量 `LIBARCHIVE.xattr.com.apple.*` 警告，**可忽略**，不影响文件内容。
+
 ### 国内 ECS 拉镜像失败
 
-Compose 已默认使用 **daocloud** 镜像（mysql / redis / rabbitmq / postgres / alpine）。若个别镜像仍失败，可预拉并 tag：
+Compose 已默认使用 **daocloud** 镜像（mysql / redis / rabbitmq / postgres / alpine）。**Milvus 相关镜像**（`milvusdb/milvus`、`milvusdb/etcd`、`minio/minio`）仍可能直连 Docker Hub 失败，可配置 registry mirror 后重启 Docker：
+
+```bash
+sudo tee /etc/docker/daemon.json <<'EOF'
+{
+  "registry-mirrors": [
+    "https://docker.1ms.run",
+    "https://docker.m.daocloud.io"
+  ]
+}
+EOF
+sudo systemctl daemon-reload && sudo systemctl restart docker
+docker info | grep -A3 "Registry Mirrors"
+```
+
+若个别基础镜像仍失败，可预拉并 tag：
 
 ```bash
 docker pull docker.m.daocloud.io/library/mysql:8.0
 docker tag docker.m.daocloud.io/library/mysql:8.0 mysql:8.0
 # redis / rabbitmq 同理
+```
+
+### 磁盘不足（build 中途 no space left on device）
+
+ai-agent 构建层较大。Build 失败后可清缓存 **（不删数据卷）**：
+
+```bash
+docker builder prune -af    # 通常可释放 10～20G build cache
+docker image prune -af        # 未使用的镜像（可选）
+df -h /
+./deploy/deploy.sh up -d --build ai-agent   # 其它服务已 build 过时可只重建 ai-agent
 ```
 
 ## 配置分层（local vs docker）
@@ -117,6 +150,8 @@ docker tag docker.m.daocloud.io/library/mysql:8.0 mysql:8.0
 
 **`deploy/.env` 必填**：`MYSQL_*`、`POSTGRES_*`、`RABBITMQ_*`、`JWT_SIGN_KEY`（≥32 字符）、`DJANGO_SECRET_KEY`、`DEEPSEEK_API_KEY`、`ALIYUN_ACCESS_KEY_*`（短信）。
 
+**指南 RAG 额外建议**：`ZHIPU_API_KEY`（Embedding + 检索/query 时扣费）；`UNSTRUCTURED_API_KEY`（仅在服务器上重新解析 PDF 时需要，见下文入库章节）。
+
 `application-docker.yml` 里 `${JWT_SIGN_KEY}`、`${SPRING_DATASOURCE_URL}` 等由 Docker 环境变量填入；本地未设则回退默认值。
 
 **不要**设置 `NACOS_USERNAME` / `NACOS_PASSWORD`（生产 Nacos 关闭鉴权，写了反而会 `unknown user`）。
@@ -124,6 +159,83 @@ docker tag docker.m.daocloud.io/library/mysql:8.0 mysql:8.0
 完整环境变量见 [`deploy/.env.example`](.env.example)。
 
 **已知待修（前端）**：AI 回复时聊天区跳动；欢迎页 chip 自动发送后输入框未清空。另：游客重复登录可能 403。
+
+## 指南 RAG 入库（首次 / 更新 PDF 后）
+
+**Milvus**：Compose 启动 `milvus-etcd` / `milvus-minio` / `milvus`（不对公网暴露 19530）。`ai-agent` 内 `MILVUS_URI=http://milvus:19530`。
+
+### 检查 `guide_references` 字段（正式用户历史消息）
+
+全新 MySQL 卷（`docker/mysql/init/03-chat-message.sql`）已含该列；**旧卷升级**需 migration：
+
+```bash
+source deploy/.env
+docker exec cardiology-mysql mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" -e \
+  "SHOW COLUMNS FROM chat_message LIKE 'guide_references';"
+# Empty set 时执行：
+docker exec -i cardiology-mysql mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" \
+  < docker/mysql/migrations/06-chat-message-guide-references.sql
+```
+
+### 入库方式 A：本机已解析缓存（推荐，跳过 Unstructured）
+
+Mac 本地若已有 `services/ai-agent/.cache/parsed_guides.pkl`（Unstructured 在本机跑通过）：
+
+```bash
+# Mac
+scp services/ai-agent/.cache/parsed_guides.pkl root@<IP>:/tmp/parsed_guides.pkl
+
+# 服务器
+docker exec cardiology-ai-agent mkdir -p /app/.cache
+docker cp /tmp/parsed_guides.pkl cardiology-ai-agent:/app/.cache/parsed_guides.pkl
+docker exec cardiology-ai-agent poetry run python scripts/ingest_guides.py --recreate --skip-parse
+```
+
+仅需 **`ZHIPU_API_KEY`** 有余额（入库时批量 Embedding）；**不需** `UNSTRUCTURED_API_KEY`。
+
+### 入库方式 B：在服务器上解析 PDF
+
+```bash
+docker exec cardiology-ai-agent poetry run python scripts/ingest_guides.py --recreate
+```
+
+需 `ZHIPU_API_KEY` + `UNSTRUCTURED_API_KEY`。若 Unstructured 返回 `422 File does not appear to be a valid PDF`，优先改用 **方式 A**。
+
+### 验证
+
+```bash
+docker exec cardiology-ai-agent poetry run python scripts/test_rag_retrieval.py "高血压要做什么检查" --dispatch
+# 期望：route=lab，guide_references 含「国家基层高血压防治管理指南（2025版）」
+```
+
+页面冒烟：登录后问「高血压要做什么检查」，回复底部应出现 **参考指南：…**。
+
+### 查看切块 / Milvus 容量
+
+```bash
+# collection 条数
+docker exec cardiology-ai-agent poetry run python -c "
+from pymilvus import MilvusClient
+print(MilvusClient(uri='http://milvus:19530').get_collection_stats('cardiology_guides'))
+"
+
+# Docker 卷占用（需 root）
+sudo du -sh /var/lib/docker/volumes/cardiology-prod_milvus-*/_data 2>/dev/null
+
+# 解析缓存 pkl（约 1～2 MB / 千块级）
+docker exec cardiology-ai-agent ls -lh /app/.cache/parsed_guides.pkl 2>/dev/null || true
+du -sh services/ai-agent/guide/    # PDF 原文约 26 MB / 11 个文件
+```
+
+## 第三方 API 余额
+
+| 服务 | 用途 | 控制台 | 说明 |
+|------|------|--------|------|
+| **智谱** | Embedding 入库 + 每次 RAG 检索 | [open.bigmodel.cn](https://open.bigmodel.cn) → 财务 | 429「余额不足」→ 充值即可，**同一 API Key 无需重启容器** |
+| **Unstructured** | 服务器上 PDF 切块（方式 B） | [platform.unstructured.io](https://platform.unstructured.io) | 国内访问可能不稳定；已用 pkl 时可不依赖 |
+| **DeepSeek** | 对话 LLM | DeepSeek 控制台 | 与 RAG 检索无关 |
+
+智谱 `embedding-3` 约 **0.5 元 / 百万 tokens**。充值后直接在服务器重跑 `test_rag_retrieval.py` 验证。
 
 ## 冒烟测试
 
@@ -143,6 +255,18 @@ curl -X POST "http://<服务器IP>/api/chat/generalUnderstanding/v1" \
   -d '{"uid":"guest-demo-001","session":"session-001","message":"我胸口疼"}'
 ```
 
+## 运维清理
+
+| 目的 | 命令 |
+|------|------|
+| 腾磁盘（不动数据卷） | `docker builder prune -af` · `docker image prune -af` |
+| 停服务（保留卷） | `./deploy/deploy.sh down` → 再 `up -d` |
+| 删部署包 | `rm -f ~/cardiology-deploy.tgz /tmp/parsed_guides.pkl` |
+| **彻底重装（删 MySQL/PG/Milvus 等全部数据）** | `./deploy/deploy.sh down` 后 `docker volume rm cardiology-prod_mysql-data cardiology-prod_postgres-data …`（`docker volume ls \| grep cardiology-prod` 核对名称），再 `up -d --build` |
+| 仅重建 Milvus 向量 | `ingest_guides.py --recreate --skip-parse`（需 pkl） |
+
+**不要**对生产随意执行 `down -v`，会删除所有命名卷。
+
 ## 已有 MySQL 数据卷升级
 
 若服务器上已有旧版 `mysql-data` 卷，按需执行迁移指南见 [`docker/mysql/migrations/`](../docker/mysql/migrations/)。
@@ -156,7 +280,7 @@ docker exec -i cardiology-mysql mysql -u cardiology -p cardiology < docker/mysql
 ```bash
 cd ~/CardiologyIntelligentAgent
 git fetch origin --tags
-git checkout v0.3.3-beta.1   # 或 master
+git checkout v1.0.0   # 或 master
 ./deploy/deploy.sh up -d --build cardiology-gateway cardiology-session   # 配置有变时重建
 # ./deploy/deploy.sh restart cardiology-gateway cardiology-session
 ```
@@ -241,15 +365,21 @@ ssh -N -L 8080:127.0.0.1:8080 \
 | 现象 | 原因 / 处理 |
 |------|-------------|
 | **502 /api** | Nacos 未 healthy、Java 未注册，或**启动未完成**（等 1～2 分钟）；查 `docker logs cardiology-gateway`；确认 `.env` **无** `NACOS_*` 账号；rebuild Java 四服务 |
-| Docker 镜像 not found | 国内 ECS 连不上 Docker Hub → 用 daocloud 等镜像站预拉（见上文） |
+| **503「铭铭暂时繁忙」** | session Feign 调 ai-agent 失败。查 `docker logs cardiology-session \| grep 降级` 与 `docker logs cardiology-ai-agent --tail 50` |
+| ai-agent **500** + `password authentication failed for user "cardiology"` | **`deploy/.env` 里 `POSTGRES_PASSWORD` 与 Postgres 数据卷初次初始化密码不一致**（改 `.env` 不会自动改卷内密码）。对齐密码后重启 ai-agent：<br>`docker exec cardiology-postgres psql -U cardiology -d cardiology -c "ALTER USER cardiology WITH PASSWORD '你的POSTGRES_PASSWORD';"`<br>`./deploy/deploy.sh up -d ai-agent` |
+| ai-agent **PoolTimeout** / 连不上 PG | 同上；或 postgres 未 healthy |
+| RAG **429** 智谱余额不足 | [open.bigmodel.cn](https://open.bigmodel.cn) 充值，**不换 key、不重启**；重跑 `test_rag_retrieval.py` |
+| RAG 无「参考指南」 | 未完成 Milvus 入库；或智谱 429；或 route 不在 RAG 范围。查 `docker logs cardiology-ai-agent \| grep guide` |
+| Unstructured **422** PDF 无效 | 优先用本机 `parsed_guides.pkl` + `--skip-parse`；或逐个 PDF 用 `--pdf 文件名片段` 排查 |
+| build **no space left on device** | `docker builder prune -af`，见上文「磁盘不足」 |
+| Mac tar **LIBARCHIVE.xattr** 警告 | 可忽略 |
+| Docker 镜像 **not found**（Milvus 等） | 配置 `registry-mirrors` 后 `systemctl restart docker`，见上文 |
 | Nacos `unknown user` | `deploy/.env` 里仍有 NACOS 账号密码，删掉后重启 Java |
 | Nacos config is empty | 已关闭 Nacos Config，业务配置在 application.yml，可忽略 |
 | 401 登录失败 | `deploy/.env` 中 `JWT_SIGN_KEY` 未改或与 gateway/auth 不一致 |
 | 短信发不出 | 配置 `ALIYUN_ACCESS_KEY_ID/SECRET` 后 rebuild auth；`docker logs cardiology-auth \| grep 短信` |
 | 前端空白 | `./deploy/deploy.sh logs frontend` |
-| AI 无响应 | 查 `DEEPSEEK_API_KEY`、`DJANGO_ALLOWED_HOSTS`、`postgres` 健康状态，以及 `./deploy/deploy.sh logs ai-agent` |
 | 问诊 429「人数较多」 | Sentinel 限流；改 gateway `sentinel-gateway-flow-rules.json` 中 `count`，重建 gateway |
-| 快速切会话也 429 | Gateway 路由未更新：确认 `cardiology-gateway-server.yaml` 含 `cardiology-session-understanding` 路由并重建 gateway |
 | Java 反复重启 | `docker logs cardiology-auth`；查 MySQL 密码、fat jar |
 
 ## 相关文件
@@ -262,3 +392,7 @@ ssh -N -L 8080:127.0.0.1:8080 \
 | `frontend/Dockerfile` | 前端构建 + Nginx |
 | `services/cardiology-cloud/Dockerfile` | Java 多模块镜像 |
 | `services/ai-agent/Dockerfile` | Python AI 服务 |
+| `services/ai-agent/scripts/ingest_guides.py` | 指南 PDF → Milvus 入库 |
+| `services/ai-agent/scripts/test_rag_retrieval.py` | RAG / dispatch 验证 |
+| `scripts/pack-deploy.sh` | 本机打包 `cardiology-deploy.tgz` |
+| `docker/mysql/migrations/06-chat-message-guide-references.sql` | 正式用户消息「参考指南」字段 |

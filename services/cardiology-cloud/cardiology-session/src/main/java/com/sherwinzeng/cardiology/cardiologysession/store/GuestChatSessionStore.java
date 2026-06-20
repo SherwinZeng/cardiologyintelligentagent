@@ -158,7 +158,8 @@ public class GuestChatSessionStore {
     }
 
     public void appendAssistantMessage(String uid, String sessionId, String content, String urgency,
-                                       String explanation, String advice, String disclaimer) {
+                                       String explanation, String advice, String disclaimer,
+                                       List<String> guideReferences) {
         String indexKey = GuestChatRedisKeys.indexKey(guestChatSessionProperties, uid);
         String metaKey = GuestChatRedisKeys.metaKey(guestChatSessionProperties, uid, sessionId);
         String msgsKey = GuestChatRedisKeys.msgsKey(guestChatSessionProperties, uid, sessionId);
@@ -174,6 +175,7 @@ public class GuestChatSessionStore {
         payload.setExplanation(explanation);
         payload.setAdvice(advice);
         payload.setDisclaimer(disclaimer);
+        payload.setGuideReferences(guideReferences);
         payload.setCreatedAt(now);
         stringRedisTemplate.opsForList().leftPush(msgsKey, JsonSerialization.toJson(payload));
         stringRedisTemplate.opsForHash().increment(metaKey, "messageCount", 1);

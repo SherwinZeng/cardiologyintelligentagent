@@ -1,4 +1,6 @@
-# 默认配置；docker 连接信息见 application-docker.yml
+# 默认配置
+# local：Nacos 配置中心（bootstrap.yml + application-local.yml）
+# docker：本文件 + application-docker.yml + deploy/.env
 server:
   port: 30002
 
@@ -7,7 +9,7 @@ spring:
     default: local
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://127.0.0.1:3306/cardiology_auth?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    url: jdbc:mysql://127.0.0.1:3306/cardiology-auth?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
     username: root
     password: root
   data:

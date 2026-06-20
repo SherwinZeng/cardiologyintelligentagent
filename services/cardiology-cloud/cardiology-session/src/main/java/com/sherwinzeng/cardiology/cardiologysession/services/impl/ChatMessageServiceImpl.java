@@ -13,6 +13,7 @@ import com.sherwinzeng.cardiology.cardiologysession.store.GuestChatMessagePayloa
 import com.sherwinzeng.cardiology.cardiologysession.store.GuestChatSessionStore;
 import com.sherwinzeng.cardiology.cardiologysession.support.AuthHeaderSupport;
 import com.sherwinzeng.cardiology.cardiologysession.support.FormalChatSessionSupport;
+import com.sherwinzeng.cardiology.cardiologysession.support.GuideReferenceSupport;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -57,6 +58,9 @@ public class ChatMessageServiceImpl implements ChatMessageService {
                 response.setExplanation(message.getExplanation());
                 response.setAdvice(message.getAdvice());
                 response.setDisclaimer(message.getDisclaimer());
+                response.setGuideReferences(
+                        message.getGuideReferences() == null ? Collections.emptyList() : message.getGuideReferences()
+                );
                 response.setCreatedAt(LocalDateTime.ofInstant(
                         Instant.ofEpochMilli(message.getCreatedAt()), ZoneId.systemDefault()));
                 records.add(response);
@@ -94,6 +98,7 @@ public class ChatMessageServiceImpl implements ChatMessageService {
             response.setExplanation(message.getExplanation());
             response.setAdvice(message.getAdvice());
             response.setDisclaimer(message.getDisclaimer());
+            response.setGuideReferences(GuideReferenceSupport.decode(message.getGuideReferences()));
             response.setCreatedAt(message.getCreatedAt());
             records.add(response);
         }

@@ -254,7 +254,12 @@ Lua 脚本：`resources/lua/guest_create_session.lua`、`guest_append_user_messa
 
 ### 配置
 
-业务配置在各服务 `src/main/resources/application*.yml`；Nacos **仅服务发现**。网关 `jwt.sign-key` 须与 auth 一致。
+| 环境 | profile | 业务配置来源 | Nacos 配置中心 | Nacos 服务发现 |
+|------|---------|--------------|----------------|----------------|
+| 本地 IDEA | `local` | Nacos public · `DEFAULT_GROUP` · `{app}.yaml` | ✅ `bootstrap.yml` | ✅ |
+| Docker 生产 | `docker` | `application.yml` + `application-docker.yml` + `deploy/.env` | ❌ `bootstrap-docker.yml` | ✅ |
+
+网关 `jwt.sign-key` 须与 auth 一致。
 
 **Docker 生产**（profile `docker`）：`application-docker.yml` + `deploy/.env` 注入 `${JWT_SIGN_KEY}`、`${ALIYUN_ACCESS_KEY_*}` 等。
 
@@ -490,10 +495,17 @@ mvn clean package -pl cardiology-gateway -am
     "urgency": "yellow",
     "explanation": "...",
     "advice": "...",
-    "disclaimer": "..."
+    "disclaimer": "...",
+    "guideReferences": ["国家基层高血压防治管理指南（2025版）"]
   }
 }
 ```
+
+| 字段 | 说明 |
+|------|------|
+| `guideReferences` | ai-agent RAG 命中时的参考指南中文名；未命中为 `[]` |
+
+**持久化：** formal assistant 消息写入 `chat_message.guide_references`（JSON 数组字符串）；guest 写入 Redis 消息 JSON 的 `guideReferences` 字段。
 
 **业务错误：** 本 session user 消息已达 30 条 → `本轮对话已达 30 个问题上限`。
 
@@ -512,7 +524,7 @@ mvn clean package -pl cardiology-gateway -am
 | `beforeId` | 否 | 游标：加载此 ID 之前的更早消息 |
 | `pageSize` | 否 | 每页条数，默认 40 |
 
-**响应：** `data.records` 为消息数组，`data.hasMore` 表示是否还有更早记录。
+**响应：** `data.records` 为消息数组（assistant 含 `guideReferences`），`data.hasMore` 表示是否还有更早记录。
 
 ---
 
@@ -544,6 +556,9 @@ mvn clean package -pl cardiology-gateway -am
 | `role` | `user` / `assistant` |
 | `content` | 消息内容 |
 | `urgency` ~ `disclaimer` | assistant 专有字段 |
+| `guide_references` | assistant 专有；参考指南中文名 JSON 数组，如 `["国家基层高血压防治管理指南（2025版）"]` |
+
+**迁移：** 已有库执行 `docker/mysql/migrations/06-chat-message-guide-references.sql`。
 
 ---
 
@@ -555,6 +570,7 @@ mvn clean package -pl cardiology-gateway -am
 | `clinical_impression` | `explanation` |
 | `management_advice` | `advice` |
 | `medical_disclaimer` | `disclaimer` |
+| `context_bundle.guide_references` | `guideReferences`（API）→ `chat_message.guide_references`（formal 持久化） |
 
 ---
 
