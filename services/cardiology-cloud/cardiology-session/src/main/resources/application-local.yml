@@ -1,6 +1,17 @@
 spring:
-  config:
-    import: optional:nacos:${spring.application.name}.yaml
   cloud:
     nacos:
       server-addr: 127.0.0.1:8848
+      config:
+        enabled: false
+      discovery:
+        enabled: true
+    sentinel:
+      enabled: true
+      eager: true
+      transport:
+        dashboard: ${SENTINEL_DASHBOARD_HOST:127.0.0.1}:${SENTINEL_DASHBOARD_PORT:18858}
+
+feign:
+  sentinel:
+    enabled: true

@@ -1,6 +1,8 @@
 spring:
-  config:
-    import: optional:nacos:${spring.application.name}.yaml
   cloud:
     nacos:
       server-addr: 127.0.0.1:8848
+      config:
+        enabled: false
+      discovery:
+        enabled: true

@@ -1,4 +1,4 @@
-# 默认 fallback；路由 / JWT / CORS 以 Nacos cardiology-gateway-server.yaml 为准
+# 默认配置（local / docker 共用路由与业务项）；docker 连接信息见 application-docker.yml
 server:
   port: 30000
 

@@ -1,13 +1,20 @@
-# Docker Compose 生产（profile: docker）
-# 业务配置来自 Nacos：cardiology-auth-server.yaml（deploy 时 nacos-init 自动导入）
-
+# Docker Compose（profile: docker）
 spring:
-  config:
-    import: optional:nacos:${spring.application.name}.yaml
   cloud:
     nacos:
       server-addr: nacos:8848
       config:
-        enabled: true
+        enabled: false
       discovery:
         enabled: true
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://mysql:3306/cardiology_auth?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:root}
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:redis}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+
+jwt:
+  sign-key: ${JWT_SIGN_KEY:zengxiangrui-daming-cardiology-intelligent-agent-platform}

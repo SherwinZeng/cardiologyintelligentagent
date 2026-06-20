@@ -1,4 +1,4 @@
-# 默认 fallback；业务配置以 Nacos cardiology-session-server.yaml 为准
+# 默认配置；docker 连接信息见 application-docker.yml
 server:
   port: 30001
 

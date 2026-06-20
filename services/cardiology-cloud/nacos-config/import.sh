@@ -27,7 +27,7 @@ publish_config() {
     -F "dataId=${data_id}" \
     -F "group=${group}" \
     -F "type=${type}" \
-    -F "content@${file}")"
+    -F "content=@${file}")"
   body="${response%$'\n'*}"
   code="${response##*$'\n'}"
   if [ "${code}" != "200" ]; then

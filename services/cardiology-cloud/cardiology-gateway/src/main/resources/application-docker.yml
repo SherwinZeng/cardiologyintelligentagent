@@ -1,15 +1,25 @@
-# Docker Compose 生产（profile: docker）
-# 路由 / JWT / CORS 来自 Nacos：cardiology-gateway-server.yaml
+# Docker Compose（profile: docker）
+# 业务配置在 application.yml + 本文件；Nacos 仅做服务发现（lb://）
 
 spring:
-  config:
-    import: optional:nacos:${spring.application.name}.yaml
   cloud:
     nacos:
       server-addr: nacos:8848
       config:
-        enabled: true
+        enabled: false
       discovery:
         enabled: true
     sentinel:
       enabled: true
+      eager: true
+      transport:
+        dashboard: ${SENTINEL_DASHBOARD_HOST:sentinel-dashboard}:${SENTINEL_DASHBOARD_PORT:8858}
+      datasource:
+        gw-flow:
+          file:
+            file: classpath:sentinel-gateway-flow-rules.json
+            data-type: json
+            rule-type: gw-flow
+
+jwt:
+  sign-key: ${JWT_SIGN_KEY:zengxiangrui-daming-cardiology-intelligent-agent-platform}

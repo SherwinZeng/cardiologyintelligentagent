@@ -1,13 +1,30 @@
-# Docker Compose 生产（profile: docker）
-# 业务配置来自 Nacos：cardiology-record-server.yaml
-
+# Docker Compose（profile: docker）
 spring:
-  config:
-    import: optional:nacos:${spring.application.name}.yaml
   cloud:
     nacos:
       server-addr: nacos:8848
       config:
-        enabled: true
+        enabled: false
       discovery:
         enabled: true
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://mysql:3306/cardiology?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai}
+    username: ${SPRING_DATASOURCE_USERNAME:cardiology}
+    password: ${SPRING_DATASOURCE_PASSWORD:cardiology}
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:redis}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:rabbitmq}
+    port: ${SPRING_RABBITMQ_PORT:5672}
+    username: ${SPRING_RABBITMQ_USERNAME:cardiology}
+    password: ${SPRING_RABBITMQ_PASSWORD:cardiology}
+
+cardiology:
+  ai-agent:
+    base-url: ${CARDIOLOGY_AI_AGENT_BASE_URL:http://ai-agent:8000/api/cardiology/}
+  consultation-summary:
+    idle-minutes: ${CARDIOLOGY_CONSULTATION_SUMMARY_IDLE_MINUTES:60}
+    min-messages: ${CARDIOLOGY_CONSULTATION_SUMMARY_MIN_MESSAGES:20}
+    poll-interval-ms: ${CARDIOLOGY_CONSULTATION_SUMMARY_POLL_MS:60000}
