@@ -218,6 +218,34 @@ docker compose up -d   # 根目录 docker-compose.yaml
 
 控制台（仅内网调试）：`http://<服务器IP>:8080/nacos`（需在安全组临时开放 8080，或 `docker exec` 进容器访问）。
 
+## 本地电脑访问服务器中间件（推荐 SSH 隧道）
+
+生产 Compose 已将 **Nacos / RabbitMQ / Sentinel** 绑定到服务器 **`127.0.0.1`**（不对公网开放）。在你 **本机 Mac** 执行：
+
+```bash
+ssh -N -L 8080:127.0.0.1:8080 \
+           -L 8848:127.0.0.1:8848 \
+           -L 15672:127.0.0.1:15672 \
+           -L 8858:127.0.0.1:8858 \
+           root@<服务器公网IP>
+```
+
+保持该终端不关，然后本机浏览器打开：
+
+| 服务 | 本机地址 | 说明 |
+|------|----------|------|
+| Nacos 控制台 | http://127.0.0.1:8080/index.html | 生产默认无鉴权 |
+| RabbitMQ | http://127.0.0.1:15672 | 账号见 `deploy/.env` 里 `RABBITMQ_*` |
+| Sentinel Dashboard | http://127.0.0.1:8858 | `sentinel` / `sentinel` |
+
+**不要**在云安全组对全网开放 8080/8848/15672/8858。若必须公网访问，应加 IP 白名单 + 强鉴权，且仅临时开放。
+
+服务器上若刚改了 `docker-compose.prod.yaml` 端口绑定，需重建中间件：
+
+```bash
+./deploy/deploy.sh up -d nacos rabbitmq sentinel-dashboard
+```
+
 ## 常见问题
 
 | 现象 | 原因 / 处理 |
