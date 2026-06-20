@@ -43,14 +43,22 @@ Internet :80
 ```bash
 git clone https://github.com/SherwinZeng/cardiologyintelligentagent.git CardiologyIntelligentAgent
 cd CardiologyIntelligentAgent
+git checkout feat/v0.3.1-dialogue-stability   # 或最新 release tag
 
 cp deploy/.env.example deploy/.env
 # 编辑 deploy/.env：MYSQL_*、POSTGRES_*、JWT_SIGN_KEY、DEEPSEEK_API_KEY、ALIYUN_ACCESS_KEY_* 等
 
-chmod +x deploy/deploy.sh
+chmod +x deploy/deploy.sh deploy/nacos-import.sh scripts/local-docker-up.sh
 ./deploy/deploy.sh up -d --build
-
 ./deploy/deploy.sh ps
+```
+
+`up -d --build` 会自动跑 **nacos-init**（alpine + import.sh），无需单独 `nacos-import`。改 Nacos 配置后执行：
+
+```bash
+./deploy/deploy.sh import
+# 或
+./deploy/nacos-import.sh
 ```
 
 浏览器访问：`http://<服务器公网IP>/`
@@ -101,20 +109,19 @@ cd ~/CardiologyIntelligentAgent && tar xzf ~/cardiology-deploy.tgz
 
 ### 国内 ECS 拉镜像失败
 
-Docker Hub 超时时，可先经镜像站拉取并 tag，再 `up --build`：
+Compose 已默认使用 **daocloud** 镜像（mysql / redis / rabbitmq / postgres / alpine）。若个别镜像仍失败，可预拉并 tag：
 
 ```bash
-若仍拉不动，可手动导入（Nacos 已 Running 时）：
-
-```bash
-docker run --rm --network cardiology-prod-net \
-  -v "$(pwd)/services/cardiology-cloud/nacos-config:/nacos-config:ro" \
-  -e NACOS_ADDR=http://nacos:8848 \
-  docker.m.daocloud.io/library/alpine:3.20 \
-  sh -c 'apk add --no-cache curl >/dev/null && /bin/sh /nacos-config/import.sh /nacos-config'
+docker pull docker.m.daocloud.io/library/mysql:8.0
+docker tag docker.m.daocloud.io/library/mysql:8.0 mysql:8.0
+# redis / rabbitmq 同理
 ```
 
-`nacos-import` 镜像拉取失败时，脚本也会自动尝试上述 fallback。
+Nacos 配置导入统一用（**不再依赖 curlimages/curl**）：
+
+```bash
+./deploy/nacos-import.sh
+```
 
 ## 配置分层（local vs docker）
 

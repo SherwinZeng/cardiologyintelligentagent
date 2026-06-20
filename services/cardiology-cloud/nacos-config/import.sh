@@ -23,7 +23,6 @@ publish_config() {
   type="$3"
   file="$4"
   echo "[nacos-import] publish ${data_id}"
-  response
   response="$(curl -sS -w '\n%{http_code}' -X POST "${NACOS_ADDR}/nacos/v1/cs/configs" \
     -F "dataId=${data_id}" \
     -F "group=${group}" \

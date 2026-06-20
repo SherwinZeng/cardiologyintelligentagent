@@ -557,24 +557,27 @@ JDK 17 · Maven 3.9+ · Node.js 20+ · Yarn · Python 3.13+ · Poetry · Docker 
 ### 0. 启动中间件
 
 ```bash
-# 仓库根目录
-docker compose up -d
+# 仓库根目录：启动中间件 + 自动导入 Nacos（含 Sentinel 规则）
+chmod +x scripts/local-docker-up.sh deploy/nacos-import.sh
+./scripts/local-docker-up.sh
 ```
 
-启动 MySQL（`3306`）、Redis（`6379`）、RabbitMQ（AMQP `5672`，管理台 `15672`，账号 `cardiology/cardiology`）、Nacos（控制台 `8080`，客户端 `8848`）。  
-`docker/mysql/init/` 会在 **MySQL 首次初始化** 时执行：创建 `cardiology`、`cardiology-auth` 库及 `chat_session` / `chat_message` / `user` 等表。  
-**已有旧库**需手动补跑 `docker/mysql/migrations/` 下脚本（如 `03-chat-session-pinned.sql`、`04-chat-session-lifecycle.sql`、`05-consultation-record.sql`）。
+或分步：
 
-将 [`nacos-config/`](services/cardiology-cloud/nacos-config/) 下配置文件导入 Nacos：
+```bash
+docker compose up -d
+./deploy/nacos-import.sh
+```
 
-- `cardiology-gateway-server.yaml`
-- `cardiology-auth-server.yaml`
-- `cardiology-session-server.yaml`（含 `spring.rabbitmq` 与 `cardiology.mq`）
-- `cardiology-record-server.yaml`（Worker；`cardiology.mq.enabled: true`，含 `session-lifecycle` 与 `consultation-summary` 配置）
+启动 MySQL（`3306`）、Redis（`6379`）、PostgreSQL（`5432`）、RabbitMQ（`5672` / 管理台 `15672`）、Nacos（`8080` / `8848`）、Sentinel Dashboard（`8858`）。  
+镜像默认走 **daocloud 镜像站**，国内 ECS / 本机均可拉取。  
+`docker/mysql/init/` 在 **MySQL 首次初始化** 时建库建表；旧库补跑 `docker/mysql/migrations/`。
 
-> 网关 `jwt.sign-key` 须与 auth 服务保持一致。  
-> **本地开发**：短信登录在 `cardiology-auth-server.yaml` 配置 `aliyun.access-key-id` / `access-key-secret` 及 `auth.sms` 模板。  
-> **Docker 生产**：在 [`deploy/.env`](deploy/.env.example) 配置 `ALIYUN_ACCESS_KEY_ID` / `ALIYUN_ACCESS_KEY_SECRET`（见 [deploy/README.md](deploy/README.md)）。
+Nacos 配置由 `nacos-init` / `deploy/nacos-import.sh` 自动发布（4 份 YAML + `sentinel-gateway-flow-rules.json`）。手动改配置后：
+
+```bash
+./deploy/nacos-import.sh
+```
 
 ### 1. 启动 AI 服务
 

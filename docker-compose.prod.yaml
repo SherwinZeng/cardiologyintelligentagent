@@ -28,7 +28,7 @@ x-java-docker-env: &java_docker_env
 
 services:
   mysql:
-    image: mysql:8.0
+    image: docker.m.daocloud.io/library/mysql:8.0
     container_name: cardiology-mysql
     restart: unless-stopped
     environment:
@@ -63,7 +63,7 @@ services:
       - cardiology-net
 
   redis:
-    image: redis:7.2-alpine
+    image: docker.m.daocloud.io/library/redis:7.2-alpine
     container_name: cardiology-redis
     restart: unless-stopped
     command: redis-server --appendonly yes
@@ -149,7 +149,7 @@ services:
       - cardiology-net
 
   rabbitmq:
-    image: rabbitmq:3.13-management-alpine
+    image: docker.m.daocloud.io/library/rabbitmq:3.13-management-alpine
     container_name: cardiology-rabbitmq
     restart: unless-stopped
     environment:
