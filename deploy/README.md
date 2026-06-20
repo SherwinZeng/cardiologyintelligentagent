@@ -104,10 +104,17 @@ cd ~/CardiologyIntelligentAgent && tar xzf ~/cardiology-deploy.tgz
 Docker Hub 超时时，可先经镜像站拉取并 tag，再 `up --build`：
 
 ```bash
-docker pull docker.m.daocloud.io/library/redis:7.2-alpine
-docker tag docker.m.daocloud.io/library/redis:7.2-alpine redis:7.2-alpine
-# mysql / rabbitmq / nacos 同理，见常见问题
+若仍拉不动，可手动导入（Nacos 已 Running 时）：
+
+```bash
+docker run --rm --network cardiology-prod-net \
+  -v "$(pwd)/services/cardiology-cloud/nacos-config:/nacos-config:ro" \
+  -e NACOS_ADDR=http://nacos:8848 \
+  docker.m.daocloud.io/library/alpine:3.20 \
+  sh -c 'apk add --no-cache curl >/dev/null && /bin/sh /nacos-config/import.sh /nacos-config'
 ```
+
+`nacos-import` 镜像拉取失败时，脚本也会自动尝试上述 fallback。
 
 ## 配置分层（local vs docker）
 

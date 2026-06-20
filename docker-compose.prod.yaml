@@ -128,7 +128,8 @@ services:
       - cardiology-net
 
   nacos-init:
-    image: curlimages/curl:8.5.0
+    # 国内 ECS 常拉不动 docker.io/curlimages/curl，改用 daocloud alpine + apk curl
+    image: docker.m.daocloud.io/library/alpine:3.20
     container_name: cardiology-nacos-init
     restart: 'no'
     depends_on:
@@ -138,7 +139,12 @@ services:
       - ./services/cardiology-cloud/nacos-config:/nacos-config:ro
     environment:
       NACOS_ADDR: http://nacos:8848
-    entrypoint: ['/bin/sh', '/nacos-config/import.sh', '/nacos-config']
+    entrypoint:
+      [
+        '/bin/sh',
+        '-c',
+        'apk add --no-cache curl >/dev/null && /bin/sh /nacos-config/import.sh /nacos-config',
+      ]
     networks:
       - cardiology-net
 
