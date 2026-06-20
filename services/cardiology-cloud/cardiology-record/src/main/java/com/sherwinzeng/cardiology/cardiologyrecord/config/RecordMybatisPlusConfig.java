@@ -3,13 +3,14 @@ package com.sherwinzeng.cardiology.cardiologyrecord.config;
 import com.baomidou.mybatisplus.annotation.DbType;
 import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor;
+import com.sherwinzeng.cardiology.cardiologyrecord.properties.ConsultationSummaryProperties;
 import com.sherwinzeng.cardiology.cardiologyrecord.properties.SessionLifecycleProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@EnableConfigurationProperties(SessionLifecycleProperties.class)
+@EnableConfigurationProperties({SessionLifecycleProperties.class, ConsultationSummaryProperties.class})
 public class RecordMybatisPlusConfig {
 
     @Bean

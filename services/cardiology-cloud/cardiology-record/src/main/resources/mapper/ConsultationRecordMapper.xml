@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.sherwinzeng.cardiology.cardiologyrecord.repository.ConsultationRecordMapper">
+
+    <sql id="consultationRecordColumns">
+        id,
+        session_id,
+        uid,
+        title,
+        urgency,
+        summary,
+        message_count,
+        started_at,
+        ended_at,
+        generated_at,
+        created_at,
+        updated_at
+    </sql>
+
+    <select id="selectBySessionId" resultType="com.sherwinzeng.cardiology.cardiologyrecord.entity.ConsultationRecord">
+        SELECT
+        <include refid="consultationRecordColumns"/>
+        FROM consultation_record
+        WHERE session_id = #{sessionId}
+        LIMIT 1
+    </select>
+
+</mapper>

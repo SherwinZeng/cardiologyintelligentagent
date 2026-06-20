@@ -20,4 +20,34 @@ public interface ChatSessionMapper extends BaseMapper<ChatSession> {
             @Param("cutoff") LocalDateTime cutoff,
             @Param("limit") int limit
     );
+
+    List<ChatSession> selectSummaryCandidates(
+            @Param("cutoff") LocalDateTime cutoff,
+            @Param("minMessages") int minMessages,
+            @Param("maxRetryCount") int maxRetryCount,
+            @Param("limit") int limit
+    );
+
+    int markSummaryProcessing(
+            @Param("sessionId") String sessionId,
+            @Param("cutoff") LocalDateTime cutoff,
+            @Param("minMessages") int minMessages,
+            @Param("attemptedAt") LocalDateTime attemptedAt
+    );
+
+    int markSummaryDone(
+            @Param("sessionId") String sessionId,
+            @Param("title") String title,
+            @Param("generatedAt") LocalDateTime generatedAt
+    );
+
+    int markSummaryFailed(
+            @Param("sessionId") String sessionId,
+            @Param("error") String error,
+            @Param("attemptedAt") LocalDateTime attemptedAt
+    );
+
+    int markSummaryPending(@Param("sessionId") String sessionId);
+
+    int recoverStuckSummaryProcessing(@Param("stuckBefore") LocalDateTime stuckBefore);
 }

@@ -58,7 +58,11 @@ const sessionTotal = ref(0);
 const messages = ref<ChatMessage[]>([]);
 const messagesHasMore = ref(false);
 const activeSessionId = ref('');
-const sending = ref(false);
+const inflightSessionIds = ref<Set<string>>(new Set());
+/** 切走 session 时 API 未返回，切回来需恢复用户消息 + 打字占位 */
+const pendingOutboundBySession = ref<
+  Record<string, { userMessage: ChatMessage; typingPlaceholderId: string }>
+>({});
 const loadingMessages = ref(false);
 const loadingOlderMessages = ref(false);
 const loadingSessions = ref(false);
@@ -79,11 +83,17 @@ const currentTopic = computed(
   () => sessions.value.find((item) => item.id === activeSessionId.value)?.title ?? '',
 );
 
+/** 仅当前会话在等 AI 回复时禁用发送，其它会话可正常输入 */
+const sending = computed(() => inflightSessionIds.value.has(activeSessionId.value));
+
 const showEmptyState = computed(
   () => messages.value.length === 0 && !loadingMessages.value && !sending.value,
 );
 
-function applyScrollToContainer(element: HTMLElement) {
+function applyScrollToContainer(element: HTMLElement, force = false) {
+  if (!force && !stickToBottom.value) {
+    return;
+  }
   programmaticScroll = true;
   element.scrollTop = element.scrollHeight;
   requestAnimationFrame(() => {
@@ -123,7 +133,7 @@ async function scrollToBottomIfNeeded() {
 /** 打字机逐字输出时，仅当用户仍在底部附近才跟随滚动 */
 let typewriterScrollRaf = 0;
 function followTypewriterScroll() {
-  if (suppressAutoScroll.value || !stickToBottom.value) {
+  if (suppressAutoScroll.value) {
     return;
   }
   if (typewriterScrollRaf !== 0) {
@@ -131,6 +141,9 @@ function followTypewriterScroll() {
   }
   typewriterScrollRaf = window.requestAnimationFrame(() => {
     typewriterScrollRaf = 0;
+    if (suppressAutoScroll.value || !stickToBottom.value) {
+      return;
+    }
     const element = messagesContainerRef.value;
     if (element) {
       applyScrollToContainer(element);
@@ -150,7 +163,7 @@ async function scrollToBottom() {
       requestAnimationFrame(() => {
         const element = messagesContainerRef.value;
         if (element) {
-          applyScrollToContainer(element);
+          applyScrollToContainer(element, true);
         }
         resolve();
       });
@@ -163,7 +176,7 @@ async function scrollMessagesToLatest() {
   await scrollToBottom();
   const element = messagesContainerRef.value;
   if (element) {
-    applyScrollToContainer(element);
+    applyScrollToContainer(element, true);
   }
   canLoadOlderMessages.value = true;
 }
@@ -237,6 +250,39 @@ function getOldestLoadedMessageId(): number | null {
   return null;
 }
 
+function clearPendingOutbound(sessionId: string) {
+  const next = { ...pendingOutboundBySession.value };
+  delete next[sessionId];
+  pendingOutboundBySession.value = next;
+}
+
+/** 从服务端拉历史后，补上尚未落库的乐观用户消息与 typing 占位 */
+function applyPendingOutboundMessages(sessionId: string) {
+  const pending = pendingOutboundBySession.value[sessionId];
+  if (!pending) {
+    return;
+  }
+
+  const serverHasUserMessage = messages.value.some(
+    (message) =>
+      message.role === 'user' && message.content.trim() === pending.userMessage.content.trim(),
+  );
+  if (!serverHasUserMessage) {
+    messages.value.push(pending.userMessage);
+  }
+
+  const hasTyping = messages.value.some((message) => message.typing);
+  if (!hasTyping && inflightSessionIds.value.has(sessionId)) {
+    messages.value.push({
+      id: pending.typingPlaceholderId,
+      role: 'assistant',
+      content: '',
+      time: '',
+      typing: true,
+    });
+  }
+}
+
 async function loadMessages(sessionId: string, animateLastAssistant = false) {
   if (!userLoginStore.id) {
     return;
@@ -251,6 +297,9 @@ async function loadMessages(sessionId: string, animateLastAssistant = false) {
       session: sessionId,
       pageSize: MESSAGE_PAGE_SIZE,
     });
+    if (activeSessionId.value !== sessionId) {
+      return;
+    }
     if (response.code !== 200 || !response.data) {
       ElMessage.error(response.message || t('chat.loadFailed'));
       return;
@@ -259,16 +308,24 @@ async function loadMessages(sessionId: string, animateLastAssistant = false) {
     const pageData = parseMessagePageData(response.data);
     messages.value = toChatMessageList(pageData.records);
     messagesHasMore.value = pageData.hasMore;
+    applyPendingOutboundMessages(sessionId);
 
     if (animateLastAssistant) {
       markLastAssistantAnimated();
     }
   } catch (error) {
-    ElMessage.error(getApiErrorMessage(error));
+    if (activeSessionId.value === sessionId) {
+      ElMessage.error(getApiErrorMessage(error));
+    }
   } finally {
-    loadingMessages.value = false;
+    if (activeSessionId.value === sessionId) {
+      loadingMessages.value = false;
+    }
   }
 
+  if (activeSessionId.value !== sessionId) {
+    return;
+  }
   await scrollMessagesToLatest();
 }
 
@@ -340,6 +397,13 @@ function handleMessagesScroll(event: Event) {
     return;
   }
   void loadOlderMessages();
+}
+
+/** 滚轮上滑时立即解除贴底，避免 rAF 打字跟滚把用户拽回去 */
+function handleMessagesWheel(event: WheelEvent) {
+  if (event.deltaY < 0) {
+    stickToBottom.value = false;
+  }
 }
 
 async function createSession(sessionId = uuidV4()): Promise<string | null> {
@@ -476,16 +540,6 @@ async function handlePinSession(sessionId: string, pinned: boolean) {
   }
 }
 
-function buildTypingPlaceholder(): ChatMessage {
-  return {
-    id: `pending-assistant-${Date.now()}`,
-    role: 'assistant',
-    content: '',
-    time: '',
-    typing: true,
-  }
-}
-
 function replaceTypingPlaceholder(message: ChatMessage) {
   const typingIndex = messages.value.findIndex((item) => item.typing)
   if (typingIndex >= 0) {
@@ -533,14 +587,28 @@ async function handleSend(text: string) {
   }
 
   const tempUserId = `temp-user-${Date.now()}`;
-  messages.value.push({
+  const typingPlaceholderId = `pending-assistant-${Date.now()}`;
+  const userMessage: ChatMessage = {
     id: tempUserId,
     role: 'user',
     content: trimmed,
     time: new Date().toLocaleString(),
+  };
+
+  pendingOutboundBySession.value = {
+    ...pendingOutboundBySession.value,
+    [sessionId]: { userMessage, typingPlaceholderId },
+  };
+  inflightSessionIds.value = new Set(inflightSessionIds.value).add(sessionId);
+
+  messages.value.push(userMessage);
+  messages.value.push({
+    id: typingPlaceholderId,
+    role: 'assistant',
+    content: '',
+    time: '',
+    typing: true,
   });
-  messages.value.push(buildTypingPlaceholder());
-  sending.value = true;
   await scrollToBottom();
 
   try {
@@ -556,15 +624,23 @@ async function handleSend(text: string) {
       throw new Error(response.message || t('chat.sendFailed'));
     }
 
-    replaceTypingPlaceholder(buildAssistantMessage(response.data));
-    void loadSessions(1, true);
-    await scrollToBottom();
+    if (activeSessionId.value === sessionId) {
+      replaceTypingPlaceholder(buildAssistantMessage(response.data));
+      void loadSessions(1, true);
+      await scrollToBottom();
+    }
+    clearPendingOutbound(sessionId);
   } catch (error) {
-    messages.value = messages.value.filter((message) => message.id !== tempUserId);
-    removeTypingPlaceholder();
+    if (activeSessionId.value === sessionId) {
+      messages.value = messages.value.filter((message) => message.id !== tempUserId);
+      removeTypingPlaceholder();
+    }
+    clearPendingOutbound(sessionId);
     ElMessage.error(getApiErrorMessage(error));
   } finally {
-    sending.value = false;
+    const next = new Set(inflightSessionIds.value);
+    next.delete(sessionId);
+    inflightSessionIds.value = next;
   }
 }
 
@@ -653,6 +729,7 @@ onMounted(() => {
         class="chat-page__messages"
         :class="{ 'is-empty': showEmptyState }"
         @scroll="handleMessagesScroll"
+        @wheel="handleMessagesWheel"
       >
         <div v-if="loadingMessages" class="chat-page__messages-loading">
           <MingmingLoadingTipContent :text="t('chat.loadingMessages')" />

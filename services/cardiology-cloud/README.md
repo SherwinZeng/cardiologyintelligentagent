@@ -31,7 +31,7 @@
 | **cardiology-gateway** | `30000` | 统一入口、JWT 鉴权、路由转发 |
 | **cardiology-auth** | `30002` | 游客 / 短信登录、JWT 签发、用户表 |
 | **cardiology-session** | `30001` | 问诊 API、会话管理、**MQ 更新会话索引**、Feign 调 AI |
-| **cardiology-record** | —（无 HTTP） | formal 会话生命周期 Worker（归档 / 清理）；问诊总结（规划中） |
+| **cardiology-record** | —（无 HTTP） | formal 会话生命周期 Worker（归档 / 清理）；空闲会话问诊总结 |
 
 **主要职责：**
 
@@ -303,7 +303,7 @@ cardiology:
     base-url: http://127.0.0.1:8000/api/cardiology/
 ```
 
-`cardiology-record-server.yaml`：`cardiology.mq.enabled: true`；**只消费** `session-lifecycle` 队列（不监听 session-index）。
+`cardiology-record-server.yaml`：`cardiology.mq.enabled: true`；**只消费** `session-lifecycle` 队列（不监听 session-index），并通过 `consultation-summary` 配置扫描 formal 空闲会话生成问诊记录。
 
 `cardiology-session` 数据源等配置示例：
 
@@ -570,7 +570,7 @@ mvn clean package -pl cardiology-gateway -am
 | `cardiology-gateway` | ✅ 已完成 |
 | `cardiology-auth` | ✅ 已完成（游客 + 短信） |
 | `cardiology-session` | ✅ 已完成（guest Redis + formal MySQL 分流、MQ 会话索引） |
-| `cardiology-record` | 🚧 Worker 骨架；`consultation_record` 总结 Job 开发中 |
+| `cardiology-record` | ✅ Worker；生命周期归档/清理 + `consultation_record` 总结 Job |
 | Sentinel 限流熔断 | 📋 规划中 |
 | 挂号 Worker | 📋 RabbitMQ + 爬虫代挂（无 HIS） |
 | payment 支付 | 📋 微信/支付宝 + **Seata TCC** |

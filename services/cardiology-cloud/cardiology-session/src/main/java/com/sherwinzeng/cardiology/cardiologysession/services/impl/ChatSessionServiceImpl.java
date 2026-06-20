@@ -11,6 +11,7 @@ import com.sherwinzeng.cardiology.cardiologycloudcommonutils.json.JsonSerializat
 import com.sherwinzeng.cardiology.cardiologysession.entity.ChatMessage;
 import com.sherwinzeng.cardiology.cardiologysession.entity.ChatSession;
 import com.sherwinzeng.cardiology.cardiologycloudcommondata.entity.chat.ChatSessionStatus;
+import com.sherwinzeng.cardiology.cardiologycloudcommondata.entity.chat.ChatSessionSummaryStatus;
 import com.sherwinzeng.cardiology.cardiologysession.repository.ChatMessageMapper;
 import com.sherwinzeng.cardiology.cardiologysession.repository.ChatSessionMapper;
 import com.sherwinzeng.cardiology.cardiologysession.feign.DRFAgentFeignClient;
@@ -80,6 +81,8 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
         chatSession.setPreview("");
         chatSession.setMessageCount(0);
         chatSession.setStatus(ChatSessionStatus.ACTIVE);
+        chatSession.setSummaryStatus(ChatSessionSummaryStatus.PENDING);
+        chatSession.setSummaryRetryCount(0);
         chatSession.setPinned(false);
         chatSessionMapper.insert(chatSession);
         return JsonSerialization.toJson(BaseResponse.success(chatSession));

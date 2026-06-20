@@ -14,6 +14,8 @@ public class CardiologyMqProperties {
 
     private SessionLifecycle sessionLifecycle = new SessionLifecycle();
 
+    private ConsultationSummarySchedule consultationSummarySchedule = new ConsultationSummarySchedule();
+
     @Data
     public static class SessionIndex {
 
@@ -32,5 +34,15 @@ public class CardiologyMqProperties {
         private String queue = RabbitMqNames.SESSION_LIFECYCLE_QUEUE;
 
         private String routingKey = RabbitMqNames.SESSION_LIFECYCLE_ROUTING_KEY;
+    }
+
+    @Data
+    public static class ConsultationSummarySchedule {
+
+        private String exchange = RabbitMqNames.SESSION_EXCHANGE;
+
+        private String queue = RabbitMqNames.CONSULTATION_SUMMARY_SCHEDULE_QUEUE;
+
+        private String routingKey = RabbitMqNames.CONSULTATION_SUMMARY_SCHEDULE_ROUTING_KEY;
     }
 }

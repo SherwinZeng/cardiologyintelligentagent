@@ -9,6 +9,11 @@
         preview,
         message_count,
         status,
+        summary_status,
+        summary_generated_at,
+        summary_retry_count,
+        summary_error,
+        summary_attempted_at,
         pinned,
         pinned_at,
         created_at,
@@ -36,5 +41,68 @@
         ORDER BY archived_at ASC
         LIMIT #{limit}
     </select>
+
+    <select id="selectSummaryCandidates" resultType="com.sherwinzeng.cardiology.cardiologyrecord.entity.ChatSession">
+        SELECT
+        <include refid="chatSessionColumns"/>
+        FROM chat_session
+        WHERE status = 'active'
+          AND updated_at &lt;= #{cutoff}
+          AND message_count &gt; #{minMessages}
+          AND (
+            summary_status = 'pending'
+            OR (summary_status = 'failed' AND summary_retry_count &lt; #{maxRetryCount})
+          )
+        ORDER BY updated_at ASC
+        LIMIT #{limit}
+    </select>
+
+    <update id="markSummaryProcessing">
+        UPDATE chat_session
+        SET summary_status = 'processing',
+            summary_attempted_at = #{attemptedAt},
+            summary_error = NULL
+        WHERE session_id = #{sessionId}
+          AND summary_status IN ('pending', 'failed')
+          AND updated_at &lt;= #{cutoff}
+          AND message_count &gt; #{minMessages}
+    </update>
+
+    <update id="markSummaryDone">
+        UPDATE chat_session
+        SET title = #{title},
+            summary_status = 'done',
+            summary_generated_at = #{generatedAt},
+            summary_retry_count = 0,
+            summary_error = NULL
+        WHERE session_id = #{sessionId}
+          AND summary_status = 'processing'
+    </update>
+
+    <update id="markSummaryFailed">
+        UPDATE chat_session
+        SET summary_status = 'failed',
+            summary_retry_count = COALESCE(summary_retry_count, 0) + 1,
+            summary_error = #{error},
+            summary_attempted_at = #{attemptedAt}
+        WHERE session_id = #{sessionId}
+    </update>
+
+    <update id="markSummaryPending">
+        UPDATE chat_session
+        SET summary_status = 'pending',
+            summary_error = NULL
+        WHERE session_id = #{sessionId}
+          AND summary_status = 'processing'
+    </update>
+
+    <update id="recoverStuckSummaryProcessing">
+        UPDATE chat_session
+        SET summary_status = 'pending',
+            summary_error = NULL
+        WHERE summary_status = 'processing'
+          AND summary_attempted_at IS NOT NULL
+          AND summary_attempted_at &lt; #{stuckBefore}
+    </update>
 
 </mapper>

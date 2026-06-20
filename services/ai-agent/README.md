@@ -547,7 +547,7 @@ poetry run python manage.py runserver 0.0.0.0:8000
 | `session` | 是 | 会话 ID，checkpointer 线程键 |
 | `message` | 是 | 当前轮用户输入（追加到 checkpoint messages） |
 
-**删会话 checkpoint：** `POST /api/cardiology/checkpoint/delete/`（内部 token，body 同 `uid` + `session`）。
+**删会话 checkpoint：** `DELETE /api/cardiology/general-understanding/`（内部 token，body：`uid` + `session`）。
 
 **响应：**
 

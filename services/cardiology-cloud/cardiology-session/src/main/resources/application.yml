@@ -47,3 +47,7 @@ cardiology:
       exchange: cardiology.session.exchange
       queue: cardiology.session.lifecycle.queue
       routing-key: session.lifecycle.archived
+    consultation-summary-schedule:
+      exchange: cardiology.session.exchange
+      queue: cardiology.session.summary.schedule.queue
+      routing-key: session.summary.schedule

@@ -86,6 +86,22 @@ public class RabbitMqAutoConfiguration {
     }
 
     @Bean
+    public Queue consultationSummaryScheduleQueue(CardiologyMqProperties properties) {
+        return new Queue(properties.getConsultationSummarySchedule().getQueue(), true);
+    }
+
+    @Bean
+    public Binding consultationSummaryScheduleBinding(
+            CardiologyMqProperties properties,
+            @Qualifier("consultationSummaryScheduleQueue") Queue consultationSummaryScheduleQueue,
+            @Qualifier("sessionIndexExchange") TopicExchange sessionIndexExchange
+    ) {
+        return BindingBuilder.bind(consultationSummaryScheduleQueue)
+                .to(sessionIndexExchange)
+                .with(properties.getConsultationSummarySchedule().getRoutingKey());
+    }
+
+    @Bean
     public RabbitMqStartupLogger rabbitMqStartupLogger(
             CardiologyMqProperties properties,
             org.springframework.boot.autoconfigure.amqp.RabbitProperties rabbitProperties

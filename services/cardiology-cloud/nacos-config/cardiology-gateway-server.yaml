@@ -33,7 +33,6 @@ spring:
               args:
                 retries: 1
                 statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
-
 auth:
   guest:
     key: "cardiology:guest:session:"

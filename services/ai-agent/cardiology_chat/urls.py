@@ -1,10 +1,10 @@
 from django.urls import path
 
 from cardiology_chat.views import (
-    CardiologyCheckpointDeleteView,
     CardiologyGeneralUnderstandingView,
     CardiologyMultimodalView,
     CardiologyReasoningView,
+    CardiologySessionSummaryView,
 )
 
 urlpatterns = [
@@ -14,9 +14,9 @@ urlpatterns = [
         name="cardiology-general-understanding",
     ),
     path(
-        "checkpoint/delete/",
-        CardiologyCheckpointDeleteView.as_view(),
-        name="cardiology-checkpoint-delete",
+        "session-summary/",
+        CardiologySessionSummaryView.as_view(),
+        name="cardiology-session-summary",
     ),
     path(
         "reasoning/",

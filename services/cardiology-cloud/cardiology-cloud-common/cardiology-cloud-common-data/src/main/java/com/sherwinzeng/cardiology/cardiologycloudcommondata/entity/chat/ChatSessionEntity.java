@@ -35,6 +35,21 @@ public class ChatSessionEntity {
     /** 会话状态：active=进行中，archived=已归档 */
     private String status;
 
+    /** 问诊总结状态：pending / processing / done / failed */
+    private String summaryStatus;
+
+    /** 最近一次问诊总结生成时间 */
+    private LocalDateTime summaryGeneratedAt;
+
+    /** 问诊总结失败重试次数 */
+    private Integer summaryRetryCount;
+
+    /** 最近一次问诊总结失败原因 */
+    private String summaryError;
+
+    /** 最近一次问诊总结尝试时间 */
+    private LocalDateTime summaryAttemptedAt;
+
     /** 是否置顶 */
     private Boolean pinned;
 

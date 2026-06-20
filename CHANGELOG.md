@@ -6,6 +6,8 @@
 
 ## [Unreleased]
 
+## [0.3.1-beta.1] - 2026-06-20
+
 ### Added
 
 - `graph/dialogue_core.py`：集中实现 `MemoryExtractor` / `DialoguePolicy` / `ContextBuilder`，形成结构化记忆、对话策略、上下文构建三层骨架。
@@ -17,8 +19,14 @@
 - `cardiology_chat/memory/` 兼容入口，内部转发到 `MemoryExtractor`，保留给旧测试和学习用。
 - 症状多轮：`部分缓解` 不误触 resolved；高危语境下「一定要去吗 / 能不能不去」等急诊犹豫问题走确定性 fast path，不调 LLM，不再贴首轮长问卷。
 - `tests/test_route_rules.py`、`tests/test_symptom_routing.py`、`tests/test_memory_extractors.py` 路由、symptom、结构化记忆与身份回忆回归测试。
+- 问诊记录闭环：`cardiology-record` 纯 Worker 扫描 formal 空闲会话，超过 1 小时且消息数大于 20 时调用 ai-agent 生成短标题与摘要，写入 `consultation_record` 并更新会话标题。
+- `cardiology-session` 新增 `/chat/record/list/v1`，前端问诊记录页接入真实列表、日期/缓急/关键词筛选、分页与“继续对话”跳转原会话。
+- ai-agent 新增内部接口 `session-summary/`，用于问诊记录摘要生成；LLM 不可用时提供确定性兜底摘要。
+- `consultation_record` DDL（`05-consultation-record.sql`）与 Redis 延迟调度（`ConsultationSummaryScheduleStore`）。
 
 ### Changed
+
+- 问诊记录页前端：6 列表格（主题含图标）、固定分页、筛选与详情抽屉；用户说明（记录生成规则 / 系统小贴士）；主题列图标与文案 i18n。
 
 - dispatch：每轮先执行结构化记忆写入，再计算 route / policy / context；运行时日志输出 route、policy、memory_changed、profile_keys、medical_keys、episode_active。
 - LLM 调用：`invoke_llm_json()` 在 system prompt 后注入 `ContextBuilder.as_system_prompt(state)`，让模型看到用户画像和当前症状事件摘要。
@@ -28,6 +36,7 @@
 - `docker-compose` 增加 **PostgreSQL** 服务（本地 checkpointer 存储）。
 - Java `generalUnderstanding` **不再加载/传递 `history`**；Feign 请求体仅 `uid` / `session` / `message`。
 - ai-agent 每轮只 append 当前 `HumanMessage`，答完后 `update_state` 写入 `AIMessage`；多轮上下文从 checkpoint 恢复。
+- 结构化记忆补充性别抽取，明确表达“我是男性 / 女性”时写入 profile memory。
 - 移除 `conversation_memory_node`；跨轮短期上下文改为 checkpoint messages + state。
 - 文档：与 `dialogue_core` 实现对齐——[memory-context-eval-guide.md](docs/memory-context-eval-guide.md)、[dialogue-core-line-by-line.md](docs/dialogue-core-line-by-line.md)、`services/ai-agent/README.md`、`eval/README.md`、`lora-finetune.md`、`beta2-plan.md`。
 

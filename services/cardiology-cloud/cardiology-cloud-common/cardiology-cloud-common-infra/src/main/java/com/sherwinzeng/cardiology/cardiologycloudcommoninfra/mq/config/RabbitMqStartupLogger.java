@@ -17,8 +17,8 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 public class RabbitMqStartupLogger implements ApplicationListener<ApplicationReadyEvent> {
 
     private static final int EXCHANGE_COUNT = 1;
-    private static final int QUEUE_COUNT = 2;
-    private static final int BINDING_COUNT = 2;
+    private static final int QUEUE_COUNT = 3;
+    private static final int BINDING_COUNT = 3;
 
     private final CardiologyMqProperties mqProperties;
     private final RabbitProperties rabbitProperties;
@@ -27,6 +27,7 @@ public class RabbitMqStartupLogger implements ApplicationListener<ApplicationRea
     public void onApplicationEvent(ApplicationReadyEvent event) {
         var sessionIndex = mqProperties.getSessionIndex();
         var sessionLifecycle = mqProperties.getSessionLifecycle();
+        var summarySchedule = mqProperties.getConsultationSummarySchedule();
         var brokerHost = rabbitProperties.getHost() != null ? rabbitProperties.getHost() : "localhost";
         var brokerPort = rabbitProperties.getPort() != null ? rabbitProperties.getPort() : 5672;
         var virtualHost = rabbitProperties.getVirtualHost() != null ? rabbitProperties.getVirtualHost() : "/";
@@ -38,6 +39,7 @@ public class RabbitMqStartupLogger implements ApplicationListener<ApplicationRea
         log.info("Queues      : {}", QUEUE_COUNT);
         log.info("  - {} (session-index, session 生产+消费)", sessionIndex.getQueue());
         log.info("  - {} (session-lifecycle, record 消费)", sessionLifecycle.getQueue());
+        log.info("  - {} (summary-schedule, record 消费→Redis 延迟调度)", summarySchedule.getQueue());
         log.info("Bindings    : {}", BINDING_COUNT);
         log.info(
                 "  - {} <-- {} [{}]",
@@ -50,6 +52,12 @@ public class RabbitMqStartupLogger implements ApplicationListener<ApplicationRea
                 sessionLifecycle.getQueue(),
                 sessionLifecycle.getExchange(),
                 sessionLifecycle.getRoutingKey()
+        );
+        log.info(
+                "  - {} <-- {} [{}]",
+                summarySchedule.getQueue(),
+                summarySchedule.getExchange(),
+                summarySchedule.getRoutingKey()
         );
         log.info("=========================================");
     }

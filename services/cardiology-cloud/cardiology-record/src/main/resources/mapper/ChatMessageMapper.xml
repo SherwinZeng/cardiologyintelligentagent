@@ -2,9 +2,37 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.sherwinzeng.cardiology.cardiologyrecord.repository.ChatMessageMapper">
 
+    <sql id="chatMessageColumns">
+        id,
+        session_id,
+        uid,
+        `role`,
+        content,
+        urgency,
+        explanation,
+        advice,
+        disclaimer,
+        created_at
+    </sql>
+
     <delete id="deleteBySessionId">
         DELETE FROM chat_message
         WHERE session_id = #{sessionId}
     </delete>
+
+    <select id="selectSessionMessages" resultType="com.sherwinzeng.cardiology.cardiologyrecord.entity.ChatMessage">
+        SELECT
+        <include refid="chatMessageColumns"/>
+        FROM (
+            SELECT
+            <include refid="chatMessageColumns"/>
+            FROM chat_message
+            WHERE uid = #{uid}
+              AND session_id = #{sessionId}
+            ORDER BY id DESC
+            LIMIT #{limit}
+        ) recent_messages
+        ORDER BY id ASC
+    </select>
 
 </mapper>

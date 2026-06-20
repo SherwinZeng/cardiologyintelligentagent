@@ -5,6 +5,7 @@ import com.sherwinzeng.cardiology.cardiologysession.request.CheckpointDeleteRequ
 import com.sherwinzeng.cardiology.cardiologysession.request.GeneralUnderstandingRequestParams;
 import com.sherwinzeng.cardiology.cardiologysession.response.GeneralUnderstandingResponse;
 import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -19,7 +20,7 @@ public interface DRFAgentFeignClient {
             @RequestBody GeneralUnderstandingRequestParams generalUnderstandingRequestParams
     );
 
-    @PostMapping("checkpoint/delete/")
+    @DeleteMapping("general-understanding/")
     BaseResponse<Void> deleteCheckpoint(
             @RequestHeader("X-Internal-Token") String internalToken,
             @RequestBody CheckpointDeleteRequestParams params

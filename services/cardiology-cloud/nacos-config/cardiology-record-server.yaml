@@ -40,6 +40,16 @@ cardiology:
     archive-cron: "0 0 2 * * ?"
     purge-cron: "0 30 2 * * ?"
 
+  consultation-summary:
+    enabled: true
+    # 本地联调：2 分钟空闲 + 低消息门槛；生产请改回 idle-minutes=60 min-messages=20 poll-interval-ms=60000
+    idle-minutes: ${CARDIOLOGY_CONSULTATION_SUMMARY_IDLE_MINUTES:2}
+    min-messages: ${CARDIOLOGY_CONSULTATION_SUMMARY_MIN_MESSAGES:4}
+    process-batch-size: 20
+    max-messages: 120
+    max-retry-count: 3
+    poll-interval-ms: ${CARDIOLOGY_CONSULTATION_SUMMARY_POLL_MS:15000}
+
   mq:
     enabled: true
     session-index:
@@ -50,3 +60,7 @@ cardiology:
       exchange: cardiology.session.exchange
       queue: cardiology.session.lifecycle.queue
       routing-key: session.lifecycle.archived
+    consultation-summary-schedule:
+      exchange: cardiology.session.exchange
+      queue: cardiology.session.summary.schedule.queue
+      routing-key: session.summary.schedule

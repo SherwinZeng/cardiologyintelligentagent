@@ -17,6 +17,11 @@ public final class RabbitMqNames {
 
     public static final String SESSION_LIFECYCLE_ROUTING_KEY = "session.lifecycle.archived";
 
+    /** 问诊总结延迟调度，record Worker 消费后写入 Redis ZSET */
+    public static final String CONSULTATION_SUMMARY_SCHEDULE_QUEUE = "cardiology.session.summary.schedule.queue";
+
+    public static final String CONSULTATION_SUMMARY_SCHEDULE_ROUTING_KEY = "session.summary.schedule";
+
     private RabbitMqNames() {
     }
 }

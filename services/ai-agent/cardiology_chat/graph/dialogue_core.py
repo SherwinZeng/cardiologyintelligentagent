@@ -19,6 +19,8 @@ _NAME_RE = re.compile(
     r"([^\s，,。！!？?、；;：:]{1,12})"
 )
 _AGE_RE = re.compile(r"(?:我今年|今年|年龄|我)?\s*(\d{1,3})\s*(?:周岁|岁)")
+_MALE_RE = re.compile(r"(?:我是|本人是|性别(?:是|为|:|：)?|我是一个)\s*(?:男性|男生|男士|男的|男)")
+_FEMALE_RE = re.compile(r"(?:我是|本人是|性别(?:是|为|:|：)?|我是一个)\s*(?:女性|女生|女士|女的|女)")
 _SUDDEN_ONSET_MARKERS = ("突然", "突发", "突然间", "一下子", "忽然")
 _PRESSURE_PAIN_MARKERS = ("压榨", "压迫", "胸口被压", "胸口压")
 _IDENTITY_RECALL_MARKERS = ("我叫什么", "你知道我叫什么", "你知道我的名字", "我的名字是什么", "怎么称呼我",
@@ -67,6 +69,11 @@ class MemoryExtractor:
                 profile["age"] = cls._fact(age, text)
                 flat_memory["age"] = str(age)
 
+        sex = cls._extract_sex(text)
+        if sex:
+            profile["sex"] = cls._fact(sex, text)
+            flat_memory["sex"] = sex
+
         # 慢性病：命中别名且非否定 → 写 chronic_conditions + state 布尔字段
         chronic_conditions = dict(medical_profile.get("chronic_conditions") or {})
         for code, aliases in _CONDITION_ALIASES.items():
@@ -89,6 +96,19 @@ class MemoryExtractor:
     @staticmethod
     def _fact(value: Any, evidence: str, confidence: str = "high") -> dict[str, Any]:
         return {"value": value, "confidence": confidence, "evidence": evidence[:80]}
+
+    @staticmethod
+    def _extract_sex(text: str) -> str | None:
+        stripped = text.strip()
+        if stripped in {"女性", "女生", "女士", "女的", "女"}:
+            return "female"
+        if stripped in {"男性", "男生", "男士", "男的", "男"}:
+            return "male"
+        if _FEMALE_RE.search(stripped):
+            return "female"
+        if _MALE_RE.search(stripped):
+            return "male"
+        return None
 
 
 class DialoguePolicy:
@@ -144,6 +164,7 @@ class ContextBuilder:
         user_profile = {
             "display_name": display_name or "",
             "age": age or "",
+            "sex": sex or "",
             "chronic_conditions": cls._chronic_conditions(state),
         }
         episode = cls._active_symptom_summary(state)
