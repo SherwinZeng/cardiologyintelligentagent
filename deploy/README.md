@@ -43,7 +43,7 @@ Internet :80
 ```bash
 git clone https://github.com/SherwinZeng/cardiologyintelligentagent.git CardiologyIntelligentAgent
 cd CardiologyIntelligentAgent
-git checkout feat/v0.3.1-dialogue-stability   # 或最新 release tag
+git checkout master   # 或 tag v0.3.3-beta.1
 
 cp deploy/.env.example deploy/.env
 # 编辑 deploy/.env：MYSQL_*、POSTGRES_*、JWT_SIGN_KEY、DEEPSEEK_API_KEY、ALIYUN_ACCESS_KEY_* 等
@@ -61,9 +61,8 @@ chmod +x deploy/deploy.sh scripts/local-docker-up.sh
 ### 已经上线一半 / 服务器已有旧代码
 
 ```bash
-cd ~/CardiologyIntelligentAgent
 git fetch origin
-git checkout feat/v0.3.1-dialogue-stability && git pull --ff-only
+git checkout master && git pull --ff-only
 
 cp -n deploy/.env.example deploy/.env
 # 重点补齐/核对：MYSQL_*、POSTGRES_*、RABBITMQ_*、JWT_SIGN_KEY、DJANGO_SECRET_KEY、DEEPSEEK_API_KEY
@@ -157,7 +156,7 @@ docker exec -i cardiology-mysql mysql -u cardiology -p cardiology < docker/mysql
 ```bash
 cd ~/CardiologyIntelligentAgent
 git fetch origin --tags
-git checkout v0.3.2-beta.1   # 或你的目标分支/tag
+git checkout v0.3.3-beta.1   # 或 master
 ./deploy/deploy.sh up -d --build cardiology-gateway cardiology-session   # 配置有变时重建
 # ./deploy/deploy.sh restart cardiology-gateway cardiology-session
 ```

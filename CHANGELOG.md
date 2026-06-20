@@ -6,6 +6,23 @@
 
 ## [Unreleased]
 
+## [0.3.3-beta.1] - 2026-06-20
+
+### Added
+
+- `scripts/pack-deploy.sh`：本机打包 `scp` 部署（GitHub 拉不动时用）。
+- `scripts/local-docker-up.sh`：本地中间件一键启动。
+
+### Changed
+
+- **配置**：业务改 `application.yml` / `application-docker.yml`；Nacos **仅服务发现**；Sentinel 限流改 gateway `classpath:sentinel-gateway-flow-rules.json`。
+- **Docker 生产**：国内 ECS 默认 daocloud 镜像；Nacos/RabbitMQ/Sentinel 管理端口绑定 `127.0.0.1`（SSH 隧道）；[`deploy/README.md`](deploy/README.md) 更新。
+- MySQL 增量迁移：`05-consultation-record.sql`（`summary_status` 等 + `consultation_record` 表）。
+
+### Removed
+
+- `nacos-config/`、`nacos-init` 容器、`deploy/nacos-import.sh`；Java 服务移除 `nacos-config` Maven 依赖。
+
 ## [0.3.2-beta.1] - 2026-06-20
 
 ### Added

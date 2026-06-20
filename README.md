@@ -674,7 +674,7 @@ curl -X POST http://127.0.0.1:30000/chat/generalUnderstanding/v1 \
 
 ## 部署
 
-生产环境使用 [`docker-compose.prod.yaml`](docker-compose.prod.yaml)（**当前推荐 tag：`v0.3.2-beta.1`**）：
+生产环境使用 [`docker-compose.prod.yaml`](docker-compose.prod.yaml)（**当前推荐 tag：`v0.3.3-beta.1`**）：
 
 ```bash
 cp deploy/.env.example deploy/.env   # 填写数据库、JWT、DEEPSEEK_API_KEY 等
